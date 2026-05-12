@@ -18,8 +18,18 @@ public partial class Main : Control
         Exhale
     }
 
-    // In-memory breathing durations and color theme selection.
+    // Active breathing durations and color theme selection.
     private readonly BreathingSettings _settings = new();
+
+    // Draft values edited on the settings screen. They are copied to _settings only
+    // when the user presses the save button.
+    private double _draftInhaleDuration;
+    private double _draftExhaleDuration;
+    private int _draftSessionDurationMinutes;
+    private int _draftThemeIndex;
+
+    // Avoids reacting to slider changes caused by UpdateTexts() itself.
+    private bool _isUpdatingSettingsControls;
 
     // Custom Control responsible for drawing the gauge and moving ball.
     private BreathingGauge _gauge = null!;
@@ -70,6 +80,7 @@ public partial class Main : Control
     public override void _Ready()
     {
         BuildInterface();
+        ResetDraftSettingsFromCurrent();
         ApplyColors();
         UpdateTexts();
         UpdateGauge();
@@ -171,13 +182,12 @@ public partial class Main : Control
         margin.AddChild(mainColumn);
 
         // Keep the settings button as an overlay instead of placing it in the
-        // vertical layout. This lets the gauge sit slightly higher on the screen.
+        // vertical layout. This prevents it from pushing the gauge downward.
         _topActionRow = BuildTopActionRow();
         root.AddChild(_topActionRow);
 
-        // Small top spacer: enough breathing room from the top edge, but less than
-        // the full settings-button row used previously.
-        mainColumn.AddChild(CreateVerticalSpacer(24));
+        // The pause progress area and the bottom controls have the same reserved
+        // height, so the gauge is vertically centered in the screen.
 
         // This fixed-height area stays in the layout all the time so the gauge does
         // not jump when the pause information appears.
@@ -384,7 +394,7 @@ public partial class Main : Control
         headerRow.AddThemeConstantOverride("separation", 12);
         column.AddChild(headerRow);
 
-        headerRow.AddChild(CreateSettingsIconButton("←", ShowMainScreen, 28));
+        headerRow.AddChild(CreateSettingsIconButton("←", CancelSettings, 28));
 
         var title = new Label
         {
@@ -725,52 +735,93 @@ public partial class Main : Control
 
     private void AdjustInhaleDuration(double delta)
     {
-        _settings.InhaleDuration = BreathingSettings.ClampDuration(_settings.InhaleDuration + delta);
-        ResetSessionProgress();
+        _draftInhaleDuration = BreathingSettings.ClampDuration(_draftInhaleDuration + delta);
         UpdateTexts();
     }
 
     private void AdjustExhaleDuration(double delta)
     {
-        _settings.ExhaleDuration = BreathingSettings.ClampDuration(_settings.ExhaleDuration + delta);
-        ResetSessionProgress();
+        _draftExhaleDuration = BreathingSettings.ClampDuration(_draftExhaleDuration + delta);
         UpdateTexts();
     }
 
     private void OnSessionDurationSliderValueChanged(double value)
     {
-        int minutes = BreathingSettings.ClampSessionDurationMinutes((int)Math.Round(value));
+        if (_isUpdatingSettingsControls)
+        {
+            return;
+        }
 
-        _settings.SessionDurationMinutes = minutes;
+        int minutes = BreathingSettings.ClampSessionDurationMinutes((int)Math.Round(value));
+        _draftSessionDurationMinutes = minutes;
 
         if (_sessionDurationSlider != null && Math.Abs(_sessionDurationSlider.Value - minutes) > 0.001)
         {
+            _isUpdatingSettingsControls = true;
             _sessionDurationSlider.Value = minutes;
+            _isUpdatingSettingsControls = false;
         }
 
-        ResetSessionProgress();
         UpdateTexts();
     }
 
     private void SelectPreviousTheme()
     {
-        _settings.MoveToPreviousTheme();
-        ApplyColors();
+        _draftThemeIndex = WrapThemeIndex(_draftThemeIndex - 1);
         UpdateTexts();
     }
 
     private void SelectNextTheme()
     {
-        _settings.MoveToNextTheme();
-        ApplyColors();
+        _draftThemeIndex = WrapThemeIndex(_draftThemeIndex + 1);
         UpdateTexts();
     }
 
     private void SaveSettings()
     {
-        // Settings are applied immediately in memory for now. The save button is
-        // the explicit validation step that returns the user to the main screen.
+        bool timingChanged =
+            Math.Abs(_settings.InhaleDuration - _draftInhaleDuration) > 0.001 ||
+            Math.Abs(_settings.ExhaleDuration - _draftExhaleDuration) > 0.001 ||
+            _settings.SessionDurationMinutes != _draftSessionDurationMinutes;
+
+        _settings.InhaleDuration = _draftInhaleDuration;
+        _settings.ExhaleDuration = _draftExhaleDuration;
+        _settings.SessionDurationMinutes = _draftSessionDurationMinutes;
+        _settings.ApplyTheme(_draftThemeIndex);
+
+        if (timingChanged)
+        {
+            ResetSessionProgress();
+        }
+
+        ApplyColors();
         ShowMainScreen();
+    }
+
+    private void CancelSettings()
+    {
+        ResetDraftSettingsFromCurrent();
+        ShowMainScreen();
+    }
+
+    private void ResetDraftSettingsFromCurrent()
+    {
+        _draftInhaleDuration = _settings.InhaleDuration;
+        _draftExhaleDuration = _settings.ExhaleDuration;
+        _draftSessionDurationMinutes = _settings.SessionDurationMinutes;
+        _draftThemeIndex = _settings.CurrentThemeIndex;
+    }
+
+    private static int WrapThemeIndex(int value)
+    {
+        int length = BreathingSettings.Themes.Length;
+        if (length <= 0)
+        {
+            return 0;
+        }
+
+        int result = value % length;
+        return result < 0 ? result + length : result;
     }
 
     private void StartOrResumeBreathingSession()
@@ -814,6 +865,7 @@ public partial class Main : Control
         _hasSessionStarted = false;
         _isRunning = false;
         ResetSessionProgress();
+        ResetDraftSettingsFromCurrent();
         UpdateMainScreenVisibility();
         UpdateTexts();
 
@@ -914,28 +966,30 @@ public partial class Main : Control
     {
         if (_inhaleValueLabel != null)
         {
-            _inhaleValueLabel.Text = $"{_settings.InhaleDuration:0.0}s";
+            _inhaleValueLabel.Text = $"{_draftInhaleDuration:0.0}s";
         }
 
         if (_exhaleValueLabel != null)
         {
-            _exhaleValueLabel.Text = $"{_settings.ExhaleDuration:0.0}s";
+            _exhaleValueLabel.Text = $"{_draftExhaleDuration:0.0}s";
         }
 
         if (_sessionDurationValueLabel != null)
         {
-            _sessionDurationValueLabel.Text = $"{_settings.SessionDurationMinutes} min";
+            _sessionDurationValueLabel.Text = $"{_draftSessionDurationMinutes} min";
         }
 
         if (_sessionDurationSlider != null &&
-            Math.Abs(_sessionDurationSlider.Value - _settings.SessionDurationMinutes) > 0.001)
+            Math.Abs(_sessionDurationSlider.Value - _draftSessionDurationMinutes) > 0.001)
         {
-            _sessionDurationSlider.Value = _settings.SessionDurationMinutes;
+            _isUpdatingSettingsControls = true;
+            _sessionDurationSlider.Value = _draftSessionDurationMinutes;
+            _isUpdatingSettingsControls = false;
         }
 
         if (_themeLabel != null)
         {
-            _themeLabel.Text = _settings.CurrentThemeName;
+            _themeLabel.Text = BreathingSettings.Themes[_draftThemeIndex].Name;
         }
 
         UpdatePauseProgressDisplay();
