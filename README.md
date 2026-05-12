@@ -1,62 +1,59 @@
 # SimpleBreathing
 
-A very simple Android breathing app built with **Godot 4.6.2** and **C#**.
+A very simple Android breathing app built with **Godot 4.6.2** and **GDScript**.
 
-## Goal
-
-SimpleBreathing displays a vertical breathing gauge with a ball that moves upward during inhalation and downward during exhalation.
-
-The interface is intentionally minimal and calm:
-
-- the main screen focuses on the gauge and the breathing ball;
-- the gauge is vertically centered in the screen;
-- settings are kept on a separate screen;
-- during a breathing session, controls are hidden;
-- tapping the screen pauses the session;
-- while paused, the app shows elapsed session time and a progress bar;
-- when a session ends naturally, the app uses a soft fade transition and displays a completion message;
-- while a breathing session is active, the phone screen is kept awake so the rhythm remains visible.
+The app displays a vertical breathing gauge with a ball that moves upward during inhalation and downward during exhalation. The goal is to keep the experience minimal, calm, and easy to use on a phone.
 
 ## Current state
 
 Implemented:
 
-- minimal Godot C# project;
-- main scene configured for a mobile portrait layout;
-- main UI built in C#;
+- Godot **standard / non-.NET** project;
+- GDScript runtime implementation;
+- portrait mobile layout;
+- main screen focused on the breathing gauge;
+- separate settings screen;
 - vertical rounded capsule-shaped gauge;
 - large breathing ball inside the gauge;
-- eased ball movement for a more natural breathing rhythm;
+- eased ball movement for a smoother breathing rhythm;
 - configurable inhalation and exhalation durations;
 - configurable total session duration in whole minutes;
-- start, pause, resume, stop, and soft automatic session completion flow;
+- start, pause, resume, stop, and automatic completion flow;
 - pause progress display above the gauge;
-- separate settings screen;
 - immediate settings application and auto-save;
-- settings persistence through Godot `user://settings.cfg`;
+- settings persistence through `user://settings.cfg`;
 - selectable visual themes;
 - neutral black-and-white settings screen for readability;
-- clearer button styling for light themes;
-- improved readability for settings symbols and navigation arrows;
+- SVG icons for the back, stop, and play controls;
 - basic localization in English, French, and Spanish;
-- completion overlay with fade out / fade in and localized completion message;
+- completion overlay with fade transition and localized completion message;
 - Android/mobile screen kept awake while a breathing session is active;
-- Android navigation bar kept visible, with edge-to-edge safe area handling;
-- documented `Main.cs` controller methods.
+- Android navigation bar kept visible, with edge-to-edge safe-area handling.
+
+The project was originally implemented in C#/.NET, but the active app logic has been migrated to GDScript. The project no longer needs Godot .NET or the .NET SDK for normal desktop testing or Android export.
 
 ## Requirements
 
 Recommended setup:
 
-- Godot **4.6.2** .NET version;
-- C# / .NET support enabled in Godot;
-- .NET SDK **9.x** installed for Android export;
-- Android export templates installed in Godot;
-- Android Studio / Android SDK configured locally for Android builds.
+- Godot **4.6.2 stable**, standard non-.NET version;
+- Godot Android export templates for exactly the same Godot version;
+- Android SDK;
+- Android SDK Platform-Tools;
+- Android SDK Build-Tools;
+- Android SDK Command-line Tools;
+- Android NDK;
+- CMake;
+- OpenJDK.
+
+The project should not require:
+
+- Godot .NET;
+- a C# project file;
+- .NET SDK 8 or 9;
+- MSBuild for Android export.
 
 ## Android export notes
-
-For Android export, the project keeps the default desktop/editor target on `net8.0`, but switches to `net9.0` when Godot exports to Android.
 
 Recommended Android export settings:
 
@@ -67,7 +64,7 @@ Immersive Mode: Off
 Edge to Edge: On
 ```
 
-With this setup, the Android navigation bar remains visible while the app keeps its background behind the system bar. The UI is adjusted using the Android safe area so controls are not placed under the navigation bar.
+With this setup, the Android navigation bar remains visible while the app background can extend behind translucent system bars. The UI is adjusted using the Android safe area so buttons and sliders are not placed under system bars.
 
 Detailed Android notes are available in:
 
@@ -84,6 +81,6 @@ docs/current_implementation.md
 docs/android_export_notes.md
 ```
 
-`docs/current_implementation.md` describes the current architecture, scenes, scripts, UI behavior, and implementation details.
+`docs/current_implementation.md` describes the current architecture, scripts, UI behavior, session state, settings persistence, and Android-related runtime behavior.
 
-`docs/android_export_notes.md` documents Android-specific export notes, .NET 9 requirements, system bar settings, and boot splash options.
+`docs/android_export_notes.md` documents Android-specific export requirements, export templates, system bar settings, safe-area handling, and boot splash notes.

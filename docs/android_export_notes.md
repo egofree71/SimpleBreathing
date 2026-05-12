@@ -2,57 +2,53 @@
 
 This document summarizes the Android-specific setup used by SimpleBreathing.
 
-It replaces the temporary root-level `README_A_LIRE.md` file, which can be removed from the repository once this file has been added under `docs/`.
+SimpleBreathing is built with **Godot 4.6.2** and **GDScript**. The active project is intended to export with the standard **non-.NET** Godot editor.
 
-## Purpose
+## Current Android status
 
-SimpleBreathing is built with Godot 4.6.2 and C#. The app is primarily designed for Android, but the project should also remain convenient to run from the Godot editor on desktop.
+The GDScript version has been tested through an Android APK export using the standard Godot editor. The APK size is much smaller than the previous C#/.NET export.
 
-The current setup keeps the project compatible with the editor while also allowing Android export with the C# Android export templates.
+The project should no longer require:
 
-## .NET target framework setup
+- Godot .NET;
+- `.csproj` / `.sln` files;
+- the .NET SDK;
+- C# Android export templates;
+- MSBuild.
 
-Godot 4.6.2 Android C# export expects `net9.0`.
+It still requires the normal Android export toolchain.
 
-The project keeps `net8.0` as the default target framework, and switches to `net9.0` only when exporting to Android:
+## Required local tools
 
-```xml
-<TargetFramework>net8.0</TargetFramework>
-<TargetFramework Condition=" '$(GodotTargetPlatform)' == 'android' ">net9.0</TargetFramework>
-```
+For Android export, configure the usual Godot Android export dependencies:
 
-This means:
+- Android SDK;
+- Android SDK Platform-Tools;
+- Android SDK Build-Tools;
+- Android SDK Command-line Tools;
+- Android NDK;
+- CMake;
+- OpenJDK.
+
+Also install the Android export templates for the exact Godot editor version being used. For example, Godot `4.6.2.stable` expects templates under a matching `4.6.2.stable` export-template folder.
+
+If Godot reports errors such as:
 
 ```text
-Desktop / Godot editor: net8.0
-Android export:         net9.0
+No export template found at the expected path:
+.../export_templates/4.6.2.stable/android_debug.apk
+.../export_templates/4.6.2.stable/android_release.apk
 ```
 
-If Android export reports an error such as:
+install the templates from:
 
 ```text
-C# project targets 'net8.0' but the export template only supports 'net9.0'.
+Editor > Manage Export Templates... > Download and Install
 ```
 
-then check that the conditional `net9.0` line is still present in `SimpleBreathing.csproj`.
+## Recommended Android screen settings
 
-## Local prerequisites
-
-For Android export with C#, the local machine must have the .NET 9 SDK installed.
-
-Check installed SDKs with:
-
-```bash
-dotnet --list-sdks
-```
-
-At least one `9.x.x` SDK should be listed.
-
-The Android SDK, Android export templates, and Godot Android export settings must also be configured locally.
-
-## Android system bars
-
-The app should keep the Android navigation bar visible.
+The app should behave like a small utility app, not like a fullscreen game. The Android navigation bar should remain visible so the user can leave the app normally.
 
 Recommended Android export preset settings:
 
@@ -66,53 +62,81 @@ Edge to Edge: On
 Expected behavior:
 
 - the Android navigation bar remains visible;
-- the navigation bar area can show the app background;
-- UI controls are not placed under the navigation bar;
-- the app uses safe area handling in `Main.cs` to keep controls above system bars.
+- the app background can extend behind translucent system bars;
+- interactive UI controls stay inside the safe area;
+- the main screen and settings screen avoid being hidden under system bars.
 
-## Boot splash and Godot logo
+`export_presets.cfg` may be local-only depending on the repository setup, so these settings may need to be checked manually after cloning the project on another machine.
 
-The Godot boot splash image can be disabled or customized in the project settings:
+## Runtime system-bar handling
 
-```text
-Project > Project Settings > Application > Boot Splash
+`scripts/main.gd` also includes a runtime safety net for Android:
 
-Show Image = Off
-Minimum Display Time = 0
-BG Color = color close to the app background
+```gdscript
+DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 ```
 
-Android may also briefly show the app launcher icon during startup. If the Godot icon is still visible at launch, configure custom Android launcher icons in the Android export preset.
+This keeps the app out of immersive fullscreen mode if a local export preset accidentally enables it.
 
-## Files affected by the Android setup
+The UI margins are adjusted using:
 
-The Android/.NET and system bar setup currently affects these files:
+```gdscript
+DisplayServer.get_display_safe_area()
+```
+
+The full-screen background still covers the whole window, including translucent system-bar areas, but controls remain inside safe-area margins.
+
+## Screen wake behavior
+
+During an active breathing session, the app keeps the device screen awake with:
+
+```gdscript
+DisplayServer.screen_set_keep_on(true)
+```
+
+The previous keep-screen-on state is saved before enabling this flag and restored when the session stops, completes, or the scene exits.
+
+Pausing a session does not restore the previous sleep behavior because the session is still active and may be resumed.
+
+## Boot splash and launcher icon
+
+The Godot boot splash image is disabled in `project.godot`:
 
 ```text
-SimpleBreathing.csproj
-scripts/Main.cs
+boot_splash/show_image=false
+```
+
+This removes Godot's default splash image. Android may still briefly show the app launcher icon during startup. To avoid seeing the Godot icon there, configure custom Android launcher icons in the Android export preset.
+
+## Files affected by Android behavior
+
+Android-related runtime behavior is mainly handled by:
+
+```text
+project.godot
+scripts/main.gd
 docs/current_implementation.md
 docs/android_export_notes.md
 README.md
 ```
 
-The following files are intentionally not included in the documentation package because they are local or generated configuration files:
+Generated or local files should normally not be committed:
 
 ```text
-project.godot
-export_presets.cfg
-SimpleBreathing.sln
-bin/
-obj/
 .godot/
+export_presets.cfg   # depending on whether local export presets are intentionally tracked
 ```
 
-## Notes for future updates
+## Test checklist
 
-When changing Android behavior, check these points again:
+After changing Android behavior, test these points on a real phone:
 
-- the conditional `net9.0` Android target in `SimpleBreathing.csproj`;
-- the Android export preset screen settings;
-- safe area handling in `scripts/Main.cs`;
-- `docs/current_implementation.md`;
-- this file.
+1. export and install the APK;
+2. verify that the app opens with the expected portrait layout;
+3. verify that the Android navigation bar remains visible;
+4. verify that buttons and sliders are not under system bars;
+5. start a session and confirm that the screen stays awake;
+6. pause and resume the session;
+7. stop the session and confirm that the phone can sleep normally again;
+8. change settings, close the app, reopen it, and confirm that settings persist;
+9. check that SVG icons render correctly on Android.

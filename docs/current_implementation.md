@@ -2,13 +2,13 @@
 
 ## Goal
 
-SimpleBreathing is a very simple Android breathing app built with **Godot 4.6.2** and **C#**.
+SimpleBreathing is a very simple Android breathing app built with **Godot 4.6.2** and **GDScript**.
 
 The app displays a vertical gauge with a ball that moves upward during inhalation and downward during exhalation.
 
 The current design goal is to keep the mobile interface calm and minimal:
 
-- the main screen is focused on the breathing animation;
+- the main screen focuses on the breathing animation;
 - settings are separated from the breathing screen;
 - controls disappear during the breathing session;
 - the breathing movement should feel smooth and natural rather than mechanical;
@@ -21,42 +21,29 @@ The current design goal is to keep the mobile interface calm and minimal:
 ```text
 SimpleBreathing/
 ├── project.godot
-├── SimpleBreathing.csproj
-├── SimpleBreathing.sln
 ├── README.md
+├── icon.svg
 ├── assets/
 │   └── icons/
-│       └── floppy-disk.svg          # legacy unused asset, safe to remove later
+│       ├── back.svg
+│       ├── play.svg
+│       └── stop.svg
 ├── scenes/
 │   └── Main.tscn
 ├── scripts/
-│   ├── Main.cs
-│   ├── BreathingGauge.cs
-│   ├── BreathingSettings.cs
-│   ├── SettingsStorage.cs
-│   ├── AppLocalization.cs
-│   └── FloppyIcon.cs                # legacy unused script, safe to remove later
+│   ├── main.gd
+│   ├── breathing_gauge.gd
+│   ├── breathing_settings.gd
+│   ├── settings_storage.gd
+│   └── app_localization.gd
 └── docs/
-    └── current_implementation.md
+    ├── current_implementation.md
+    └── android_export_notes.md
 ```
 
-`FloppyIcon.cs` and `assets/icons/floppy-disk.svg` are no longer used by the current UI because the settings screen now auto-saves every change and no longer displays a save button. They may still exist in the repository until a cleanup commit removes them.
+The original C#/.NET implementation has been replaced by GDScript as the active runtime implementation. Any old C# reference files, if still present in a temporary documentation folder, are no longer part of the active Godot project and can be removed after the GDScript version has been validated and committed.
 
 ## Project configuration
-
-### `SimpleBreathing.csproj`
-
-The project uses:
-
-```xml
-<Project Sdk="Godot.NET.Sdk/4.6.2">
-```
-
-Target framework:
-
-```text
-net8.0
-```
 
 ### `project.godot`
 
@@ -69,20 +56,28 @@ res://scenes/Main.tscn
 Current viewport configuration:
 
 ```text
-width  : 480
-height : 854
+width       : 480
+height      : 854
 orientation : portrait
-stretch mode : canvas_items
-stretch aspect : expand
+stretch mode: canvas_items
+stretch aspect: expand
 ```
 
 This matches a phone-oriented vertical layout.
 
+The project is configured as a standard Godot project, not a Godot .NET project. It should be usable with the standard non-.NET editor.
+
+The Godot boot splash image is disabled:
+
+```text
+boot_splash/show_image=false
+```
+
 ### Android system bars
 
-SimpleBreathing should behave more like a small utility app than a fullscreen game on Android. The Android status/navigation system bars should stay visible so the user can leave the app normally with the Home button/gesture area.
+SimpleBreathing should behave more like a small utility app than a fullscreen game on Android. The Android status/navigation system bars should stay visible so the user can leave the app normally with the Home button or gesture area.
 
-For the preferred modern Android look, the navigation/status bars are visible but translucent, and the app background extends behind them. Interactive controls should **not** be placed under those bars.
+For the preferred modern Android look, the navigation/status bars are visible but translucent, and the app background extends behind them. Interactive controls should not be placed under those bars.
 
 In the Android export preset, use:
 
@@ -91,11 +86,11 @@ Options > Screen > Immersive Mode : Off
 Options > Screen > Edge to Edge   : On
 ```
 
-`export_presets.cfg` is currently ignored by Git, so this setting may exist only in the local Godot export preset and may not appear in repository zips.
+`export_presets.cfg` may be local-only, so this setting may need to be checked manually after cloning the repository.
 
-As a safety net, `Main.cs` calls `EnsureAndroidSystemBarsVisible()` on startup when running on Android. This forces the main window back to windowed mode if a local export preset still starts the app in immersive fullscreen.
+As a runtime safety net, `main.gd` calls `DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)` on Android. This helps keep the app out of immersive fullscreen mode if a local export preset is wrong.
 
-When Edge to Edge is enabled, `Main.cs` also applies safe-area margins through `DisplayServer.GetDisplaySafeArea()`. The full-screen background still fills the whole window, including the translucent system-bar areas, but buttons and sliders remain inside the safe area.
+When Edge to Edge is enabled, `main.gd` also applies safe-area margins through `DisplayServer.get_display_safe_area()`. The full-screen background still fills the whole window, including translucent system-bar areas, but buttons and sliders remain inside the safe area.
 
 ## Main scene
 
@@ -110,14 +105,14 @@ Control
 It uses:
 
 ```text
-res://scripts/Main.cs
+res://scripts/main.gd
 ```
 
-The scene itself is intentionally minimal. Most UI elements are created in code by `Main.cs`, which makes it easier to iterate quickly on mobile layout and behavior.
+The scene itself is intentionally minimal. Most UI elements are created in code by `main.gd`, which makes it easier to iterate quickly on mobile layout and behavior.
 
 ## Scripts
 
-## `scripts/Main.cs`
+## `scripts/main.gd`
 
 Main application controller.
 
@@ -126,6 +121,7 @@ Responsibilities:
 - build the runtime UI;
 - create the main breathing screen;
 - create the settings screen;
+- create the completion overlay;
 - manage screen switching;
 - load persisted settings at startup;
 - apply and save settings immediately when the user changes them;
@@ -138,16 +134,13 @@ Responsibilities:
 - update the pause progress display;
 - show the completion fade overlay when a session ends naturally;
 - apply color themes to the main screen;
-- apply subtle theme-aware button backgrounds on the main screen so light themes do not use Godot's dark default button style;
 - keep the settings screen readable with a neutral black-and-white style;
 - keep interactive controls inside mobile safe areas when Android Edge to Edge is enabled;
-- use localized labels through `AppLocalization`.
-
-The controller methods are documented with XML comments. Short inline comments are also used for non-trivial layout and state-management details.
+- use localized labels through `app_localization.gd`.
 
 ### Important runtime state
 
-`Main.cs` keeps the active settings in:
+`main.gd` keeps the active settings in:
 
 ```text
 _settings
@@ -155,18 +148,18 @@ _settings
 
 These settings are used by the main breathing screen and the running session.
 
-The settings screen currently uses working values:
+The settings screen uses working values:
 
 ```text
-_draftInhaleDuration
-_draftExhaleDuration
-_draftSessionDurationMinutes
-_draftThemeIndex
+_draft_inhale_duration
+_draft_exhale_duration
+_draft_session_duration_minutes
+_draft_theme_index
 ```
 
-Although these variables still use the word `draft`, they are now applied immediately after each user change. The old explicit save/cancel behavior has been removed.
+Although these variables still use the word `draft`, settings are applied immediately after each user change. There is no explicit save/cancel behavior.
 
-When the user changes a setting, `Main.cs`:
+When the user changes a setting, `main.gd`:
 
 1. updates the working value;
 2. copies it into `_settings`;
@@ -190,12 +183,12 @@ Visible at startup:
 
 [gauge + ball]
 
-[▶]
+[play]
 ```
 
 Details:
 
-- the `Simple Breathing` title is no longer displayed;
+- the `Simple Breathing` title is not displayed;
 - the settings button is in the top-left corner;
 - the start button is centered near the bottom;
 - main-screen buttons use a translucent theme-aware style instead of Godot's default dark grey button background;
@@ -203,15 +196,18 @@ Details:
 - the top pause-progress area and bottom control area reserve matching heights, so the gauge remains centered and stable;
 - the bottom button area is kept stable so the gauge does not resize when buttons appear or disappear.
 
-### Start
-
-The start button uses:
+The start/resume and stop buttons use SVG icons:
 
 ```text
-▶
+assets/icons/play.svg
+assets/icons/stop.svg
 ```
 
-When pressed:
+The top settings button still uses the simple gear glyph `⚙`.
+
+### Start
+
+When the start button is pressed:
 
 - the breathing session starts;
 - the app asks Godot to keep the phone screen awake;
@@ -229,17 +225,13 @@ During a running session:
 
 The screen is visually clean. No buttons are visible.
 
-During an active session, the app keeps the screen awake with `DisplayServer.ScreenSetKeepOn(true)`. This prevents the phone from going to sleep automatically while the user is following the breathing rhythm.
-
-A transparent full-screen touch area catches taps/clicks.
-
-When the user touches/clicks the screen:
+A transparent full-screen touch area catches taps/clicks. When the user touches/clicks the screen:
 
 - the session is paused;
 - the keep-screen-on flag remains active because the session has not been stopped;
 - the stop button appears to the left;
 - the resume button appears centered under the gauge;
-- the pause elapsed-time text is shown in a slightly larger size for better phone readability;
+- the pause elapsed-time text is shown above the gauge;
 - the pause progress display appears above the gauge.
 
 ### Paused session
@@ -247,14 +239,12 @@ When the user touches/clicks the screen:
 Visible controls:
 
 ```text
-[■]     [▶]
+[stop]     [play]
 ```
 
-The `▶` resume button stays in the same centered position as the original start button. Its glyph is also nudged slightly to the right inside the button so it looks more visually centered on real devices.
+The resume button stays in the same centered position as the original start button. The stop button appears to its left.
 
-The `■` stop button appears to its left.
-
-Both bottom buttons are positioned with the same explicit width and height, so the visible button backgrounds remain identical even if the play and stop glyphs have different intrinsic text sizes.
+Both bottom buttons are positioned with the same explicit width and height, so the visible button backgrounds remain identical.
 
 Above the gauge, the app displays:
 
@@ -278,13 +268,7 @@ Example:
 
 ### Stop
 
-The stop button uses:
-
-```text
-■
-```
-
-When pressed:
+When the stop button is pressed:
 
 - the session stops;
 - the previous screen sleep behavior is restored;
@@ -310,7 +294,7 @@ The fade transition avoids a sudden visual jump from the final breathing frame b
 
 ### Completion overlay
 
-The completion message is handled by a full-screen overlay created in `Main.cs`.
+The completion message is handled by a full-screen overlay created in `main.gd`.
 
 Overlay elements:
 
@@ -322,8 +306,8 @@ CompletionLabel
 
 The label text is localized through:
 
-```csharp
-AppLocalization.SessionCompleted
+```gdscript
+AppLocalization.SESSION_COMPLETED
 ```
 
 Current translations:
@@ -347,25 +331,23 @@ The app resets the session while the screen is black, so the user does not see a
 
 ### Screen wake behavior
 
-While a breathing session is active, `Main.cs` keeps the device screen awake through:
+While a breathing session is active, `main.gd` keeps the device screen awake through:
 
-```csharp
-DisplayServer.ScreenSetKeepOn(true)
+```gdscript
+DisplayServer.screen_set_keep_on(true)
 ```
-
-This is enabled when the user starts or resumes a session.
 
 Before enabling it, the previous Godot screen wake state is saved with:
 
-```csharp
-DisplayServer.ScreenIsKeptOn()
+```gdscript
+DisplayServer.screen_is_kept_on()
 ```
 
 That previous state is restored when:
 
 - the user stops the session;
 - the session reaches its configured duration;
-- the settings screen is opened from any future UI path while a session is active;
+- the settings screen is opened while a session is active;
 - the `Main` scene exits.
 
 Pausing a session does not restore the previous screen sleep behavior, because the session is still active and the user may want to resume without the phone going to sleep.
@@ -383,12 +365,16 @@ It uses a fixed neutral style:
 
 The settings screen does not preview the selected theme colors directly. This is intentional: some themes made buttons hard to read when the settings screen used theme colors.
 
-The settings button symbols are intentionally heavier than before: the `+`, `−`, `‹`, `›`, and back arrow use a larger font size and a thin same-color outline so they remain readable on real phone screens.
+The back button uses an SVG icon:
+
+```text
+assets/icons/back.svg
+```
 
 Current French layout example:
 
 ```text
-[←] Réglages
+[back] Réglages
 
 Respiration
 
@@ -402,7 +388,7 @@ Thèmes
 [‹]  Océan  [›]
 ```
 
-There is no longer a save button. The old floppy-disk button was removed because immediate auto-save is simpler and more natural for this small mobile app.
+There is no save button. The old floppy-disk button was removed because immediate auto-save is simpler and more natural for this small mobile app.
 
 ### Settings editing model
 
@@ -410,7 +396,7 @@ The settings screen uses immediate application and immediate persistence:
 
 - changing a value applies it to the active settings;
 - changing a value writes it to `user://settings.cfg`;
-- pressing `←` simply returns to the main screen;
+- pressing the back button simply returns to the main screen;
 - there is no cancel behavior anymore.
 
 Affected values:
@@ -428,8 +414,6 @@ The duration buttons use:
 −
 +
 ```
-
-They use a larger button-symbol font and a thin white outline to look less fragile on mobile.
 
 The values are edited in steps of:
 
@@ -471,11 +455,9 @@ The theme selection buttons use:
 ›
 ```
 
-They use the same heavier settings-button style as the duration buttons.
-
 The selected theme name is displayed between the buttons.
 
-The theme change is now applied to the main screen and saved immediately.
+The theme change is applied to the main screen and saved immediately.
 
 ## Breathing session and cycle
 
@@ -489,19 +471,19 @@ There are two timing layers:
 The session timer is stored in seconds internally:
 
 ```text
-_sessionElapsed
+_session_elapsed
 ```
 
 The configured session duration comes from:
 
-```csharp
-_settings.SessionDurationSeconds
+```gdscript
+_settings.get_session_duration_seconds()
 ```
 
 When:
 
 ```text
-_sessionElapsed >= SessionDurationSeconds
+_session_elapsed >= session duration seconds
 ```
 
 The app calls the completion flow, which fades to black, shows the completion message, resets the session, and returns to the start screen.
@@ -510,9 +492,9 @@ The app calls the completion flow, which fades to black, shows the completion me
 
 The cycle has two phases:
 
-```csharp
-Inhale
-Exhale
+```gdscript
+BreathingPhase.INHALE
+BreathingPhase.EXHALE
 ```
 
 During inhalation:
@@ -533,7 +515,7 @@ When the app starts:
 
 - no session is running;
 - the ball is visible at the bottom;
-- the current phase is `Inhale`;
+- the current phase is `INHALE`;
 - elapsed phase time is `0`;
 - elapsed session time is `0`.
 
@@ -543,14 +525,14 @@ The ball does not move linearly.
 
 Instead, the phase progress is passed through an easing function:
 
-```csharp
-EaseInOut(double value)
+```gdscript
+_ease_in_out(value)
 ```
 
 The current easing uses a smootherstep formula:
 
-```csharp
-return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+```gdscript
+return t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
 ```
 
 This gives a more natural breathing feeling:
@@ -562,7 +544,7 @@ This gives a more natural breathing feeling:
 
 This replaced the earlier idea of adding explicit pause durations after inhalation and exhalation, which felt too mechanical.
 
-## `scripts/BreathingGauge.cs`
+## `scripts/breathing_gauge.gd`
 
 Custom `Control` that draws the gauge and the ball procedurally.
 
@@ -585,14 +567,14 @@ The gauge has:
 
 The gauge was reduced by roughly 10% compared with an earlier version, to feel lighter on a phone screen.
 
-The main screen now positions the gauge so it is visually centered in the screen.
+The main screen positions the gauge so it is visually centered in the screen.
 
 ### Ball
 
 The ball is drawn with:
 
-```csharp
-DrawCircle(...)
+```gdscript
+draw_circle(...)
 ```
 
 It uses the full gauge width:
@@ -614,15 +596,15 @@ Progress convention:
 
 The public method is:
 
-```csharp
-SetProgress(float progress)
+```gdscript
+set_progress(progress)
 ```
 
 The progress value is clamped between `0.0` and `1.0`.
 
-## `scripts/BreathingSettings.cs`
+## `scripts/breathing_settings.gd`
 
-Contains breathing parameters and color themes. Values are kept in memory during runtime and persisted by `SettingsStorage` whenever the user changes a setting.
+Contains breathing parameters and color themes. Values are kept in memory during runtime and persisted by `settings_storage.gd` whenever the user changes a setting.
 
 ### Inhalation and exhalation durations
 
@@ -648,8 +630,8 @@ Maximum : 20.0 seconds
 
 The clamp method is:
 
-```csharp
-ClampDuration(double value)
+```gdscript
+clamp_duration(value)
 ```
 
 ### Session duration
@@ -675,14 +657,14 @@ Maximum : 60 minutes
 
 The active session duration is exposed as seconds through:
 
-```csharp
-SessionDurationSeconds
+```gdscript
+get_session_duration_seconds()
 ```
 
 The clamp method is:
 
-```csharp
-ClampSessionDurationMinutes(int value)
+```gdscript
+clamp_session_duration_minutes(value)
 ```
 
 ### Themes
@@ -690,10 +672,10 @@ ClampSessionDurationMinutes(int value)
 Current theme keys:
 
 ```text
-ThemeOcean
-ThemeJungle
-ThemeVolcano
-ThemeSky
+THEME_OCEAN
+THEME_JUNGLE
+THEME_VOLCANO
+THEME_SKY
 ```
 
 Localized names:
@@ -712,16 +694,9 @@ Each theme defines:
 - gauge border color;
 - ball color.
 
-Note: `GaugeBorderColor` still exists in the theme data, but the gauge no longer draws a visible border. It is kept for now to avoid unnecessary churn in the theme structure.
+Note: `gauge_border_color` still exists in the theme data, but the gauge no longer draws a visible border. It is kept for now to avoid unnecessary churn in the theme structure.
 
-### Theme notes
-
-- Ocean is a saturated blue theme.
-- Jungle is based on bright green jungle-like colors.
-- Volcano is based on dark red, lava orange, and yellow colors.
-- Sky uses light sky-like colors, including light blue and white.
-
-## `scripts/SettingsStorage.cs`
+## `scripts/settings_storage.gd`
 
 Static helper responsible for loading and saving settings in Godot's user data folder.
 
@@ -746,10 +721,10 @@ theme_index
 
 Loading behavior:
 
-- called during `Main._Ready()` before building the UI;
+- called during `Main._ready()` before building the UI;
 - missing file means defaults are kept;
 - invalid or missing values fall back to the current default values;
-- loaded values are clamped through `BreathingSettings` before use.
+- loaded values are clamped through `breathing_settings.gd` before use.
 
 Saving behavior:
 
@@ -757,7 +732,7 @@ Saving behavior:
 - writes the current active settings to `user://settings.cfg`;
 - does not require Android external storage permissions.
 
-## `scripts/AppLocalization.cs`
+## `scripts/app_localization.gd`
 
 Small code-based localization helper.
 
@@ -801,49 +776,48 @@ If the device language is not supported, the app falls back to English.
 
 The language is selected automatically from the current OS/Godot locale.
 
-On Android, this should follow the phone language or app language environment. This still needs to be tested on a real Android phone.
-
-The UI is not currently offering an in-app language selector. The app chooses the language automatically.
+On Android, this should follow the phone language or app language environment. The app does not currently offer an in-app language selector.
 
 Potential future improvement:
 
-- move translations from `AppLocalization.cs` to a Godot CSV translation resource if the number of labels grows.
+- move translations from `app_localization.gd` to a Godot CSV translation resource if the number of labels grows.
 
-## Legacy unused files
+## Removed legacy save icon files
 
 The current UI no longer uses the old save icon system.
 
-These files may still exist until a cleanup commit removes them:
+The following legacy files were removed on the `gdscript-port` branch:
 
 ```text
 scripts/FloppyIcon.cs
+scripts/FloppyIcon.cs.uid
 assets/icons/floppy-disk.svg
+assets/icons/floppy-disk.svg.import
 ```
 
 They were used for the previous explicit save button, but the settings screen now auto-saves immediately after every change.
-
-If removed later, also remove related project imports generated by Godot if they appear in the repository.
 
 ## Current validated state
 
 Implemented and validated:
 
-- minimal Godot C# project;
-- mobile portrait project configuration;
-- main scene configured;
-- runtime UI built in code;
+- standard Godot / non-.NET project opens and runs on desktop;
+- Android APK export works with the standard Godot editor;
+- APK size is much smaller than the previous C#/.NET version;
+- main scene configured with `main.gd`;
+- runtime UI built in GDScript;
 - main breathing screen separated from settings screen;
 - title removed from the main screen;
 - settings button moved to the top-left;
 - centered start/resume button;
 - stop button appearing left of the resume button when paused;
-- stop and start/resume buttons using the same explicit visual rectangle to avoid glyph-dependent Button sizing;
+- stop and start/resume buttons use SVG icons;
+- settings back button uses a SVG icon;
 - hidden controls during a running session;
 - phone screen kept awake during an active breathing session;
 - previous screen sleep behavior restored when the session stops, completes, or the scene exits;
 - tap/click anywhere to pause while running;
 - pause progress display above the gauge;
-- slightly larger pause elapsed-time text for better readability;
 - progress bar based on total session duration;
 - soft completion fade when session duration is reached;
 - vertical rounded capsule-shaped gauge;
@@ -859,35 +833,20 @@ Implemented and validated:
 - immediate settings application;
 - immediate settings persistence in `user://settings.cfg`;
 - basic localization in English, French, and Spanish;
-- themes renamed and recolored;
 - neutral black-and-white settings screen;
-- larger and heavier settings button symbols;
-- fixed-size bottom session buttons with matching visible dimensions;
-- XML comments added to `Main.cs` methods;
-- implementation documentation.
+- GDScript scripts documented with comments.
 
 ## Technical points to watch
 
-### C# compilation in Godot
+### Android export templates
 
-Sometimes Godot may fail to recompile the C# assembly correctly after replacing files.
+If the standard Godot editor reports missing Android export templates, install the templates for the exact editor version:
 
-When in doubt, run this from the project root:
-
-```bash
-dotnet clean
-dotnet build
+```text
+Editor > Manage Export Templates... > Download and Install
 ```
 
-If the issue persists, close Godot and delete the generated folders:
-
-```bat
-rmdir /s /q bin
-rmdir /s /q obj
-rmdir /s /q .godot\mono
-```
-
-Then reopen the project in Godot, build it, and run it again.
+For example, Godot `4.6.2.stable` expects Android templates for `4.6.2.stable`, not the old `.mono` template folder.
 
 ### Screen wake behavior on Android
 
@@ -924,7 +883,7 @@ For testing:
 
 ### Localization
 
-Localization currently uses `AppLocalization.cs`.
+Localization currently uses `app_localization.gd`.
 
 For testing:
 
@@ -937,81 +896,14 @@ For testing:
 
 Watch for longer labels on small screens, especially in Spanish.
 
-### Legacy save icon cleanup
-
-The old save icon files may still be present but are no longer used.
-
-Suggested cleanup command when convenient:
-
-```bash
-git rm scripts/FloppyIcon.cs assets/icons/floppy-disk.svg
-```
-
-Only do this if the files are not referenced anywhere else.
-
 ## Later improvements
 
 Possible next steps:
 
-- test settings persistence on a real Android phone;
+- remove any temporary C# reference files after the GDScript migration is committed and validated;
+- test settings persistence again on a real Android phone after reinstalling the APK;
 - test screen wake behavior on a real Android phone;
 - test localization on a real Android phone;
-- test button sizes on a real Android phone;
-- test the breathing rhythm on an actual phone screen;
-- prepare Android export;
-- optionally refine the completion fade timing after testing on a phone;
+- prepare a clean release APK;
+- optionally refine the completion fade timing after longer use;
 - optionally add haptic feedback or sound, if it remains calm and unobtrusive.
-
-## Android export notes from latest test discussion
-
-### Android .NET target
-
-With Godot 4.6.2 .NET export templates, Android exports require the project to target `net9.0` for Android.
-
-The project file therefore keeps `net8.0` as the default target for the editor and desktop builds, but overrides the target framework to `net9.0` only when Godot exports to Android:
-
-```xml
-<TargetFramework>net8.0</TargetFramework>
-<TargetFramework Condition=" '$(GodotTargetPlatform)' == 'android' ">net9.0</TargetFramework>
-```
-
-This avoids the Android export error:
-
-```text
-C# project targets 'net8.0' but the export template only supports 'net9.0'.
-```
-
-### Android system bars
-
-The intended Android behavior is:
-
-- system navigation bar visible;
-- navigation bar area visually transparent / matching the app background;
-- interactive UI kept inside the safe area, not hidden below Android system controls.
-
-Recommended Android export preset settings:
-
-```text
-Screen > Immersive Mode : Off
-Screen > Edge to Edge   : On
-```
-
-`Main.cs` keeps the Android system bars visible at runtime and applies safe-area margins so buttons and sliders stay away from translucent system bars.
-
-### Godot startup logo
-
-The Godot boot splash image is not mandatory. It can be disabled manually in:
-
-```text
-Project Settings > Application > Boot Splash
-```
-
-Recommended values:
-
-```text
-Show Image = Off
-Minimum Display Time = 0
-BG Color = close to the app background color
-```
-
-The Android launcher icon may still appear very briefly during the OS-level startup screen. To avoid seeing the Godot icon there, set custom Android launcher icons in the Android export preset.
