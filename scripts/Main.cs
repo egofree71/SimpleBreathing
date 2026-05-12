@@ -110,7 +110,7 @@ public partial class Main : Control
         bottomRow.AddThemeConstantOverride("separation", 12);
         mainColumn.AddChild(bottomRow);
 
-        _startPauseButton = CreateIconButton("▶", ToggleBreathing);
+        _startPauseButton = CreateIconButton("▶", ToggleBreathing, 34);
         bottomRow.AddChild(_startPauseButton);
 
         var spacer = new Control
@@ -120,7 +120,7 @@ public partial class Main : Control
         };
         bottomRow.AddChild(spacer);
 
-        bottomRow.AddChild(CreateIconButton("⚙", ShowSettingsScreen));
+        bottomRow.AddChild(CreateIconButton("⚙", ShowSettingsScreen, 28));
 
         return margin;
     }
@@ -153,7 +153,7 @@ public partial class Main : Control
         headerRow.AddThemeConstantOverride("separation", 12);
         column.AddChild(headerRow);
 
-        headerRow.AddChild(CreateIconButton("←", ShowMainScreen));
+        headerRow.AddChild(CreateIconButton("←", ShowMainScreen, 28));
 
         var title = new Label
         {
@@ -292,14 +292,14 @@ public partial class Main : Control
         return button;
     }
 
-    private Button CreateIconButton(string text, Action onPressed)
+    private Button CreateIconButton(string text, Action onPressed, int fontSize = 28)
     {
         var button = new Button
         {
             Text = text,
             CustomMinimumSize = new Vector2(64, 56)
         };
-        button.AddThemeFontSizeOverride("font_size", 24);
+        button.AddThemeFontSizeOverride("font_size", fontSize);
         button.Pressed += onPressed;
         return button;
     }
