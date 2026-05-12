@@ -25,4 +25,3 @@ The goal is to provide a calm, customizable breathing rhythm with adjustable inh
 \- Customizable colors
 
 \- Android export
-
