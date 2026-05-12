@@ -46,12 +46,6 @@ public partial class BreathingGauge : Control
         var ballCenter = new Vector2(width * 0.5f, ballY);
 
         DrawCircle(ballCenter, ballRadius, BallColor);
-
-        // Petits repères visuels haut/bas pour rendre la jauge plus lisible.
-        float markerLeft = gaugeRect.Position.X - 14.0f;
-        float markerRight = gaugeRect.Position.X - 4.0f;
-        DrawLine(new Vector2(markerLeft, usableTop), new Vector2(markerRight, usableTop), GaugeBorderColor, 2.0f, true);
-        DrawLine(new Vector2(markerLeft, usableBottom), new Vector2(markerRight, usableBottom), GaugeBorderColor, 2.0f, true);
     }
 
     private void DrawCapsuleGauge(Rect2 rect)
@@ -71,45 +65,5 @@ public partial class BreathingGauge : Control
         DrawRect(bodyRect, GaugeColor, filled: true);
         DrawCircle(new Vector2(centerX, topCenterY), radius, GaugeColor);
         DrawCircle(new Vector2(centerX, bottomCenterY), radius, GaugeColor);
-
-        // Bordure de la capsule.
-        float borderWidth = 3.0f;
-        float borderRadius = radius - borderWidth * 0.5f;
-        float leftX = rect.Position.X + borderWidth * 0.5f;
-        float rightX = rect.Position.X + rect.Size.X - borderWidth * 0.5f;
-
-        DrawLine(
-            new Vector2(leftX, topCenterY),
-            new Vector2(leftX, bottomCenterY),
-            GaugeBorderColor,
-            borderWidth,
-            true);
-
-        DrawLine(
-            new Vector2(rightX, topCenterY),
-            new Vector2(rightX, bottomCenterY),
-            GaugeBorderColor,
-            borderWidth,
-            true);
-
-        DrawArc(
-            new Vector2(centerX, topCenterY),
-            borderRadius,
-            Mathf.Pi,
-            Mathf.Tau,
-            48,
-            GaugeBorderColor,
-            borderWidth,
-            true);
-
-        DrawArc(
-            new Vector2(centerX, bottomCenterY),
-            borderRadius,
-            0.0f,
-            Mathf.Pi,
-            48,
-            GaugeBorderColor,
-            borderWidth,
-            true);
     }
 }
