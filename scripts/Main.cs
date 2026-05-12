@@ -18,6 +18,14 @@ public partial class Main : Control
         Exhale
     }
 
+    // Fixed visual size used by the main start/resume/stop buttons. Keep this
+    // larger than the text glyph minimum size so Godot does not expand one
+    // button differently from the other based on the symbol width or height.
+    private static readonly Vector2 SessionButtonSize = new(80, 68);
+    private const float SessionButtonCenterY = 16.0f;
+    private const float StopButtonCenterX = -92.0f;
+    private const float StartResumeButtonCenterX = 0.0f;
+
     // Active breathing durations and color theme selection.
     private readonly BreathingSettings _settings = new();
 
@@ -551,10 +559,11 @@ public partial class Main : Control
         // stop button appears on the left during pause, the resume button does not
         // shift: it stays directly below the gauge.
         //
-        // The buttons are moved slightly upward inside this reserved bottom area so
-        // their visual center sits between the gauge and the bottom of the screen.
-        PositionControl(_startResumeButton, left: -38, top: -14, right: 38, bottom: 46);
-        PositionControl(_stopButton, left: -130, top: -14, right: -54, bottom: 46);
+        // The two buttons use the same explicit visual rectangle. This avoids a
+        // subtle Godot/Button minimum-size difference where the play and stop
+        // glyphs can make their backgrounds render at slightly different sizes.
+        PositionSessionButton(_startResumeButton, StartResumeButtonCenterX);
+        PositionSessionButton(_stopButton, StopButtonCenterX);
 
         return controls;
     }
@@ -832,7 +841,8 @@ public partial class Main : Control
         var button = new Button
         {
             Text = text,
-            CustomMinimumSize = new Vector2(76, 60)
+            CustomMinimumSize = SessionButtonSize,
+            Size = SessionButtonSize
         };
         button.AddThemeFontSizeOverride("font_size", fontSize);
         button.Pressed += onPressed;
@@ -967,22 +977,25 @@ public partial class Main : Control
     }
 
     /// <summary>
-    /// Positions a control around the horizontal center of its parent.
+    /// Positions a session button with a fixed visual size relative to the center of its parent.
     /// </summary>
     /// <remarks>
     /// This is used for the bottom session buttons so the resume button stays
-    /// centered even when the stop button appears to its left.
+    /// centered even when the stop button appears to its left. The fixed rectangle
+    /// also prevents the play and stop glyphs from producing slightly different
+    /// rendered button dimensions.
     /// </remarks>
-    private static void PositionControl(Control control, float left, float top, float right, float bottom)
+    private static void PositionSessionButton(Control control, float centerX)
     {
         control.AnchorLeft = 0.5f;
         control.AnchorTop = 0.0f;
         control.AnchorRight = 0.5f;
         control.AnchorBottom = 0.0f;
-        control.OffsetLeft = left;
-        control.OffsetTop = top;
-        control.OffsetRight = right;
-        control.OffsetBottom = bottom;
+        control.OffsetLeft = centerX - SessionButtonSize.X / 2.0f;
+        control.OffsetTop = SessionButtonCenterY - SessionButtonSize.Y / 2.0f;
+        control.OffsetRight = centerX + SessionButtonSize.X / 2.0f;
+        control.OffsetBottom = SessionButtonCenterY + SessionButtonSize.Y / 2.0f;
+        control.Size = SessionButtonSize;
     }
 
     /// <summary>

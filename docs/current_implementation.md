@@ -253,6 +253,8 @@ The `▶` resume button stays in the same centered position as the original star
 
 The `■` stop button appears to its left.
 
+Both bottom buttons are positioned with the same explicit width and height, so the visible button backgrounds remain identical even if the play and stop glyphs have different intrinsic text sizes.
+
 Above the gauge, the app displays:
 
 ```text
@@ -834,6 +836,7 @@ Implemented and validated:
 - settings button moved to the top-left;
 - centered start/resume button;
 - stop button appearing left of the resume button when paused;
+- stop and start/resume buttons using the same explicit visual rectangle to avoid glyph-dependent Button sizing;
 - hidden controls during a running session;
 - phone screen kept awake during an active breathing session;
 - previous screen sleep behavior restored when the session stops, completes, or the scene exits;
@@ -857,6 +860,7 @@ Implemented and validated:
 - themes renamed and recolored;
 - neutral black-and-white settings screen;
 - larger and heavier settings button symbols;
+- fixed-size bottom session buttons with matching visible dimensions;
 - XML comments added to `Main.cs` methods;
 - implementation documentation.
 
