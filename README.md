@@ -14,7 +14,8 @@ The interface is intentionally minimal and calm:
 - during a breathing session, controls are hidden;
 - tapping the screen pauses the session;
 - while paused, the app shows elapsed session time and a progress bar;
-- when a session ends naturally, the app uses a soft fade transition and displays a completion message.
+- when a session ends naturally, the app uses a soft fade transition and displays a completion message;
+- while a breathing session is active, the phone screen is kept awake so the rhythm remains visible.
 
 ## Current state
 
@@ -37,6 +38,7 @@ Implemented:
 - neutral black-and-white settings screen for readability;
 - basic localization in English, French, and Spanish;
 - completion overlay with fade out / fade in and localized completion message;
+- Android/mobile screen kept awake while a breathing session is active;
 - documented `Main.cs` controller methods.
 
 ## Technical documentation

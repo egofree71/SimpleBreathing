@@ -114,6 +114,8 @@ Responsibilities:
 - manage the breathing session state;
 - manage the inhalation/exhalation cycle;
 - manage total session duration;
+- keep the phone screen awake while a breathing session is active;
+- restore the previous screen sleep behavior when the session stops, completes, or the scene exits;
 - update the pause progress display;
 - show the completion fade overlay when a session ends naturally;
 - apply color themes to the main screen;
@@ -190,6 +192,7 @@ The start button uses:
 When pressed:
 
 - the breathing session starts;
+- the app asks Godot to keep the phone screen awake;
 - the settings button disappears;
 - the start button disappears;
 - only the gauge and moving ball remain visible.
@@ -204,11 +207,14 @@ During a running session:
 
 The screen is visually clean. No buttons are visible.
 
+During an active session, the app keeps the screen awake with `DisplayServer.ScreenSetKeepOn(true)`. This prevents the phone from going to sleep automatically while the user is following the breathing rhythm.
+
 A transparent full-screen touch area catches taps/clicks.
 
 When the user touches/clicks the screen:
 
 - the session is paused;
+- the keep-screen-on flag remains active because the session has not been stopped;
 - the stop button appears to the left;
 - the resume button appears centered under the gauge;
 - the pause progress display appears above the gauge.
@@ -256,6 +262,7 @@ The stop button uses:
 When pressed:
 
 - the session stops;
+- the previous screen sleep behavior is restored;
 - the total session timer resets;
 - the breathing cycle resets;
 - the ball returns to the bottom;
@@ -266,6 +273,7 @@ When pressed:
 When the configured session duration is reached:
 
 - the session stops automatically;
+- the previous screen sleep behavior is restored;
 - a full-screen overlay fades the current view to black;
 - the app resets the session while the screen is black;
 - a localized completion message fades in;
@@ -311,6 +319,31 @@ text + black fade out: about 0.45 s
 ```
 
 The app resets the session while the screen is black, so the user does not see an abrupt jump.
+
+### Screen wake behavior
+
+While a breathing session is active, `Main.cs` keeps the device screen awake through:
+
+```csharp
+DisplayServer.ScreenSetKeepOn(true)
+```
+
+This is enabled when the user starts or resumes a session.
+
+Before enabling it, the previous Godot screen wake state is saved with:
+
+```csharp
+DisplayServer.ScreenIsKeptOn()
+```
+
+That previous state is restored when:
+
+- the user stops the session;
+- the session reaches its configured duration;
+- the settings screen is opened from any future UI path while a session is active;
+- the `Main` scene exits.
+
+Pausing a session does not restore the previous screen sleep behavior, because the session is still active and the user may want to resume without the phone going to sleep.
 
 ## Settings screen
 
@@ -774,6 +807,8 @@ Implemented and validated:
 - centered start/resume button;
 - stop button appearing left of the resume button when paused;
 - hidden controls during a running session;
+- phone screen kept awake during an active breathing session;
+- previous screen sleep behavior restored when the session stops, completes, or the scene exits;
 - tap/click anywhere to pause while running;
 - pause progress display above the gauge;
 - progress bar based on total session duration;
@@ -819,6 +854,21 @@ rmdir /s /q .godot\mono
 ```
 
 Then reopen the project in Godot, build it, and run it again.
+
+### Screen wake behavior on Android
+
+During a breathing session, the app uses Godot's screen keep-on flag so the phone should not enter automatic sleep while the gauge is moving.
+
+For testing on a real Android phone:
+
+1. set the phone screen timeout to a short value, for example 15 or 30 seconds;
+2. start a breathing session;
+3. wait longer than the normal screen timeout;
+4. verify that the screen stays on;
+5. stop the session;
+6. verify that the phone can sleep normally again afterward.
+
+The app does not prevent the user from manually turning the screen off with the power button.
 
 ### Settings persistence
 
@@ -870,6 +920,7 @@ Only do this if the files are not referenced anywhere else.
 Possible next steps:
 
 - test settings persistence on a real Android phone;
+- test screen wake behavior on a real Android phone;
 - test localization on a real Android phone;
 - test button sizes on a real Android phone;
 - test the breathing rhythm on an actual phone screen;
