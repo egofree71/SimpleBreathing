@@ -1,6 +1,15 @@
 using Godot;
 using System;
 
+/// <summary>
+/// Main application controller.
+/// </summary>
+/// <remarks>
+/// The current UI is intentionally built from code rather than from a detailed
+/// Godot scene tree. This keeps early mobile layout iterations quick: the scene
+/// only provides the root Control node, while this class creates the main screen,
+/// the settings screen, and wires the breathing cycle.
+/// </remarks>
 public partial class Main : Control
 {
     private enum BreathingPhase
@@ -9,21 +18,37 @@ public partial class Main : Control
         Exhale
     }
 
+    // In-memory breathing durations and color theme selection.
     private readonly BreathingSettings _settings = new();
 
+    // Custom Control responsible for drawing the gauge and moving ball.
     private BreathingGauge _gauge = null!;
+
+    // Settings-screen labels refreshed whenever durations or theme change.
     private Label _inhaleValueLabel = null!;
     private Label _exhaleValueLabel = null!;
     private Label _themeLabel = null!;
+
+    // Main action button. Its text switches between play and pause icons.
     private Button _startPauseButton = null!;
+
+    // Full-screen background color rectangle used instead of relying on theme defaults.
     private ColorRect _background = null!;
+
+    // Two top-level screen containers. Only one is visible at a time.
     private Control _mainScreen = null!;
     private Control _settingsScreen = null!;
 
+    // Current breathing phase and elapsed time inside that phase.
     private BreathingPhase _currentPhase = BreathingPhase.Inhale;
     private double _phaseElapsed;
+
+    // False on startup: the ball is visible at the bottom, but the cycle is not moving yet.
     private bool _isRunning;
 
+    /// <summary>
+    /// Builds the runtime UI and initializes visuals once the scene enters the tree.
+    /// </summary>
     public override void _Ready()
     {
         BuildInterface();
@@ -32,6 +57,9 @@ public partial class Main : Control
         UpdateGauge();
     }
 
+    /// <summary>
+    /// Advances the breathing cycle while the application is running.
+    /// </summary>
     public override void _Process(double delta)
     {
         if (!_isRunning)
@@ -41,6 +69,8 @@ public partial class Main : Control
 
         _phaseElapsed += delta;
 
+        // Use a while loop instead of a single if so the cycle remains valid even
+        // after a large frame hitch, for example when the app is resumed on mobile.
         while (_phaseElapsed >= GetCurrentPhaseDuration())
         {
             _phaseElapsed -= GetCurrentPhaseDuration();
@@ -52,6 +82,9 @@ public partial class Main : Control
         UpdateGauge();
     }
 
+    /// <summary>
+    /// Creates the shared background and both application screens.
+    /// </summary>
     private void BuildInterface()
     {
         _background = new ColorRect
@@ -64,14 +97,17 @@ public partial class Main : Control
 
         _mainScreen = BuildMainScreen();
         AddChild(_mainScreen);
-        FillParent((Control)_mainScreen);
+        FillParent(_mainScreen);
 
         _settingsScreen = BuildSettingsScreen();
         _settingsScreen.Visible = false;
         AddChild(_settingsScreen);
-        FillParent((Control)_settingsScreen);
+        FillParent(_settingsScreen);
     }
 
+    /// <summary>
+    /// Builds the calm breathing screen: gauge only, with play/pause and settings buttons.
+    /// </summary>
     private Control BuildMainScreen()
     {
         var margin = new MarginContainer
@@ -113,6 +149,8 @@ public partial class Main : Control
         _startPauseButton = CreateIconButton("▶", ToggleBreathing, 34);
         bottomRow.AddChild(_startPauseButton);
 
+        // Expands between the two buttons so they stay anchored to opposite sides
+        // on portrait phone screens.
         var spacer = new Control
         {
             Name = "BottomSpacer",
@@ -125,6 +163,9 @@ public partial class Main : Control
         return margin;
     }
 
+    /// <summary>
+    /// Builds the separate settings screen used to edit durations and color theme.
+    /// </summary>
     private Control BuildSettingsScreen()
     {
         var margin = new MarginContainer
@@ -187,6 +228,7 @@ public partial class Main : Control
         column.AddChild(colorsTitle);
         column.AddChild(CreateThemeRow());
 
+        // Pushes the reset button toward the bottom without hard-coding a phone height.
         var flexibleSpacer = new Control
         {
             Name = "SettingsFlexibleSpacer",
@@ -217,6 +259,9 @@ public partial class Main : Control
         return label;
     }
 
+    /// <summary>
+    /// Creates one duration editor row with a label, decrease button, value label, and increase button.
+    /// </summary>
     private HBoxContainer CreateDurationRow(string labelText, out Label valueLabel, Action decrease, Action increase)
     {
         var row = new HBoxContainer
@@ -348,6 +393,8 @@ public partial class Main : Control
 
     private void ShowSettingsScreen()
     {
+        // Opening settings pauses the breathing animation. This avoids a moving
+        // background state while the user is changing durations or colors.
         _isRunning = false;
         UpdateTexts();
 
@@ -405,6 +452,8 @@ public partial class Main : Control
         double phaseProgress = _phaseElapsed / GetCurrentPhaseDuration();
         phaseProgress = Math.Clamp(phaseProgress, 0.0, 1.0);
 
+        // The drawing code expects 0 at the bottom and 1 at the top.
+        // Inhale climbs from 0 to 1; exhale descends from 1 to 0.
         float visualProgress = _currentPhase == BreathingPhase.Inhale
             ? (float)phaseProgress
             : 1.0f - (float)phaseProgress;
@@ -423,6 +472,9 @@ public partial class Main : Control
         ApplyTextColorRecursive(this, _settings.TextColor);
     }
 
+    /// <summary>
+    /// Applies text colors after the runtime UI tree exists.
+    /// </summary>
     private static void ApplyTextColorRecursive(Node node, Color color)
     {
         if (node is Label label)
@@ -442,6 +494,13 @@ public partial class Main : Control
         }
     }
 
+    /// <summary>
+    /// Anchors a Control to fill its parent.
+    /// </summary>
+    /// <remarks>
+    /// This helper avoids repeating the four anchors and four offsets every time a
+    /// screen-sized Control is created from code.
+    /// </remarks>
     private static void FillParent(Control control)
     {
         control.AnchorLeft = 0.0f;

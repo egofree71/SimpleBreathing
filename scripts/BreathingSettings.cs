@@ -1,6 +1,13 @@
 using Godot;
 using System;
 
+/// <summary>
+/// In-memory settings for one breathing session.
+/// </summary>
+/// <remarks>
+/// Settings are not persisted yet. They are centralized here so saving/loading can
+/// later be added without spreading duration and theme state through the UI code.
+/// </remarks>
 public sealed class BreathingSettings
 {
     public const double DurationStep = 0.5;
@@ -18,6 +25,8 @@ public sealed class BreathingSettings
     public Color GaugeBorderColor { get; private set; }
     public Color BallColor { get; private set; }
 
+    // Static theme list used by the settings screen. Each theme currently defines
+    // all app colors directly; there is no separate Godot Theme resource yet.
     public static readonly BreathingTheme[] Themes =
     {
         new(
@@ -94,11 +103,16 @@ public sealed class BreathingSettings
             return 0;
         }
 
+        // C# '%' keeps the sign of the left operand, so negative indexes need the
+        // extra correction to wrap backward through the theme list.
         int result = value % length;
         return result < 0 ? result + length : result;
     }
 }
 
+/// <summary>
+/// Immutable color palette used by the breathing UI.
+/// </summary>
 public sealed class BreathingTheme
 {
     public BreathingTheme(
