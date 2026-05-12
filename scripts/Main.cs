@@ -241,6 +241,22 @@ public partial class Main : Control
     /// </summary>
     private Control BuildSettingsScreen()
     {
+        var root = new Control
+        {
+            Name = "SettingsScreenRoot"
+        };
+
+        // Keep the settings screen visually neutral: solid black background and
+        // white controls, regardless of the currently selected breathing theme.
+        var background = new ColorRect
+        {
+            Name = "SettingsBackground",
+            Color = Colors.Black,
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        root.AddChild(background);
+        FillParent(background);
+
         var margin = new MarginContainer
         {
             Name = "SettingsScreen"
@@ -249,6 +265,8 @@ public partial class Main : Control
         margin.AddThemeConstantOverride("margin_top", 24);
         margin.AddThemeConstantOverride("margin_right", 24);
         margin.AddThemeConstantOverride("margin_bottom", 24);
+        root.AddChild(margin);
+        FillParent(margin);
 
         var column = new VBoxContainer
         {
@@ -267,7 +285,7 @@ public partial class Main : Control
         headerRow.AddThemeConstantOverride("separation", 12);
         column.AddChild(headerRow);
 
-        headerRow.AddChild(CreateIconButton("←", ShowMainScreen, 28));
+        headerRow.AddChild(CreateSettingsIconButton("←", ShowMainScreen, 28));
 
         var title = new Label
         {
@@ -315,10 +333,10 @@ public partial class Main : Control
             Alignment = BoxContainer.AlignmentMode.Center,
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
-        saveRow.AddChild(CreateSaveButton(SaveSettings));
+        saveRow.AddChild(CreateSettingsSaveButton(SaveSettings));
         column.AddChild(saveRow);
 
-        return margin;
+        return root;
     }
 
     private Label CreateSectionTitle(string text)
@@ -328,7 +346,7 @@ public partial class Main : Control
             Text = text,
             HorizontalAlignment = Godot.HorizontalAlignment.Left
         };
-        label.AddThemeFontSizeOverride("font_size", 20);
+        label.AddThemeFontSizeOverride("font_size", 22);
         return label;
     }
 
@@ -352,10 +370,10 @@ public partial class Main : Control
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             VerticalAlignment = Godot.VerticalAlignment.Center
         };
-        label.AddThemeFontSizeOverride("font_size", 17);
+        label.AddThemeFontSizeOverride("font_size", 20);
         row.AddChild(label);
 
-        row.AddChild(CreateButton("−", decrease));
+        row.AddChild(CreateSettingsButton("−", decrease));
 
         valueLabel = new Label
         {
@@ -363,10 +381,10 @@ public partial class Main : Control
             HorizontalAlignment = Godot.HorizontalAlignment.Center,
             VerticalAlignment = Godot.VerticalAlignment.Center
         };
-        valueLabel.AddThemeFontSizeOverride("font_size", 17);
+        valueLabel.AddThemeFontSizeOverride("font_size", 20);
         row.AddChild(valueLabel);
 
-        row.AddChild(CreateButton("+", increase));
+        row.AddChild(CreateSettingsButton("+", increase));
 
         return row;
     }
@@ -381,7 +399,7 @@ public partial class Main : Control
         };
         row.AddThemeConstantOverride("separation", 10);
 
-        row.AddChild(CreateButton("‹", SelectPreviousTheme));
+        row.AddChild(CreateSettingsButton("‹", SelectPreviousTheme));
 
         _themeLabel = new Label
         {
@@ -391,10 +409,10 @@ public partial class Main : Control
             HorizontalAlignment = Godot.HorizontalAlignment.Center,
             VerticalAlignment = Godot.VerticalAlignment.Center
         };
-        _themeLabel.AddThemeFontSizeOverride("font_size", 17);
+        _themeLabel.AddThemeFontSizeOverride("font_size", 20);
         row.AddChild(_themeLabel);
 
-        row.AddChild(CreateButton("›", SelectNextTheme));
+        row.AddChild(CreateSettingsButton("›", SelectNextTheme));
 
         return row;
     }
@@ -434,18 +452,46 @@ public partial class Main : Control
         return button;
     }
 
-    private Button CreateSaveButton(Action onPressed)
+    private Button CreateSettingsButton(string text, Action onPressed)
+    {
+        var button = new Button
+        {
+            Text = text,
+            CustomMinimumSize = new Vector2(112, 48)
+        };
+        button.AddThemeFontSizeOverride("font_size", 24);
+        ApplySettingsButtonStyle(button);
+        button.Pressed += onPressed;
+        return button;
+    }
+
+    private Button CreateSettingsIconButton(string text, Action onPressed, int fontSize = 28)
+    {
+        var button = new Button
+        {
+            Text = text,
+            CustomMinimumSize = new Vector2(64, 56)
+        };
+        button.AddThemeFontSizeOverride("font_size", fontSize);
+        ApplySettingsButtonStyle(button);
+        button.Pressed += onPressed;
+        return button;
+    }
+
+    private Button CreateSettingsSaveButton(Action onPressed)
     {
         var button = new Button
         {
             Text = string.Empty,
             CustomMinimumSize = new Vector2(64, 56)
         };
+        ApplySettingsButtonStyle(button);
 
         var icon = new FloppyIcon
         {
             Name = "SaveIcon",
-            MouseFilter = MouseFilterEnum.Ignore
+            MouseFilter = MouseFilterEnum.Ignore,
+            IconColor = Colors.White
         };
         button.AddChild(icon);
         // Smaller insets so the floppy icon appears larger inside the same button.
@@ -453,6 +499,43 @@ public partial class Main : Control
 
         button.Pressed += onPressed;
         return button;
+    }
+
+    private static void ApplySettingsButtonStyle(Button button)
+    {
+        button.AddThemeColorOverride("font_color", Colors.White);
+        button.AddThemeColorOverride("font_hover_color", Colors.White);
+        button.AddThemeColorOverride("font_pressed_color", Colors.White);
+        button.AddThemeColorOverride("font_focus_color", Colors.White);
+
+        button.AddThemeStyleboxOverride("normal", CreateSettingsButtonStyleBox(new Color(0.04f, 0.04f, 0.04f)));
+        button.AddThemeStyleboxOverride("hover", CreateSettingsButtonStyleBox(new Color(0.10f, 0.10f, 0.10f)));
+        button.AddThemeStyleboxOverride("pressed", CreateSettingsButtonStyleBox(new Color(0.18f, 0.18f, 0.18f)));
+        button.AddThemeStyleboxOverride("focus", CreateSettingsButtonStyleBox(new Color(0.04f, 0.04f, 0.04f)));
+        button.AddThemeStyleboxOverride("disabled", CreateSettingsButtonStyleBox(new Color(0.04f, 0.04f, 0.04f)));
+    }
+
+    private static StyleBoxFlat CreateSettingsButtonStyleBox(Color fillColor)
+    {
+        var style = new StyleBoxFlat
+        {
+            BgColor = fillColor,
+            BorderColor = Colors.White,
+            BorderWidthLeft = 2,
+            BorderWidthTop = 2,
+            BorderWidthRight = 2,
+            BorderWidthBottom = 2,
+            CornerRadiusTopLeft = 8,
+            CornerRadiusTopRight = 8,
+            CornerRadiusBottomRight = 8,
+            CornerRadiusBottomLeft = 8,
+            ContentMarginLeft = 8,
+            ContentMarginTop = 8,
+            ContentMarginRight = 8,
+            ContentMarginBottom = 8
+        };
+
+        return style;
     }
 
     private static void PositionControl(Control control, float left, float top, float right, float bottom)
@@ -691,7 +774,10 @@ public partial class Main : Control
         _gauge.BallColor = _settings.BallColor;
         _gauge.QueueRedraw();
 
-        ApplyTextColorRecursive(this, _settings.TextColor);
+        // Keep the breathing screen theme-aware, but leave the settings screen in
+        // a neutral black-and-white style for consistent readability.
+        ApplyTextColorRecursive(_mainScreen, _settings.TextColor);
+        ApplyTextColorRecursive(_settingsScreen, Colors.White);
     }
 
     /// <summary>
