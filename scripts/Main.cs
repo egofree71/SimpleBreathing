@@ -63,6 +63,14 @@ public partial class Main : Control
     private Control _mainScreen = null!;
     private Control _settingsScreen = null!;
 
+    // Full-screen overlay used when a session finishes naturally.
+    private Control _completionOverlay = null!;
+    private ColorRect _completionFade = null!;
+    private Label _completionLabel = null!;
+
+    // Prevents multiple completion animations from being started by the same session.
+    private bool _isShowingCompletion;
+
     // Current breathing phase, elapsed time inside that phase, and total elapsed session time.
     private BreathingPhase _currentPhase = BreathingPhase.Inhale;
     private double _phaseElapsed;
@@ -106,7 +114,7 @@ public partial class Main : Control
 
         if (_sessionElapsed >= GetSessionDuration())
         {
-            StopBreathingSession();
+            CompleteBreathingSession();
             return;
         }
 
@@ -147,6 +155,62 @@ public partial class Main : Control
         _settingsScreen.Visible = false;
         AddChild(_settingsScreen);
         FillParent(_settingsScreen);
+
+        _completionOverlay = BuildCompletionOverlay();
+        AddChild(_completionOverlay);
+        FillParent(_completionOverlay);
+    }
+
+    /// <summary>
+    /// Builds the full-screen overlay used to softly end a completed session.
+    /// </summary>
+    /// <remarks>
+    /// The overlay is kept above both screens and hidden until a session reaches
+    /// its configured duration. It fades the current view to black, displays the
+    /// completion message briefly, then fades back to the start screen.
+    /// </remarks>
+    private Control BuildCompletionOverlay()
+    {
+        var overlay = new Control
+        {
+            Name = "CompletionOverlay",
+            Visible = false,
+            MouseFilter = MouseFilterEnum.Stop
+        };
+
+        _completionFade = new ColorRect
+        {
+            Name = "CompletionFade",
+            Color = Colors.Black,
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        overlay.AddChild(_completionFade);
+        FillParent(_completionFade);
+
+        var center = new CenterContainer
+        {
+            Name = "CompletionMessageCenter",
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        overlay.AddChild(center);
+        FillParent(center);
+
+        _completionLabel = new Label
+        {
+            Name = "CompletionLabel",
+            Text = "Session terminée",
+            HorizontalAlignment = Godot.HorizontalAlignment.Center,
+            VerticalAlignment = Godot.VerticalAlignment.Center,
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        _completionLabel.AddThemeFontSizeOverride("font_size", 34);
+        _completionLabel.AddThemeColorOverride("font_color", Colors.White);
+        center.AddChild(_completionLabel);
+
+        _completionFade.Modulate = new Color(1.0f, 1.0f, 1.0f, 0.0f);
+        _completionLabel.Modulate = new Color(1.0f, 1.0f, 1.0f, 0.0f);
+
+        return overlay;
     }
 
     /// <summary>
@@ -956,6 +1020,54 @@ public partial class Main : Control
         _isRunning = false;
         UpdateMainScreenVisibility();
         UpdateTexts();
+    }
+
+    /// <summary>
+    /// Plays the end-of-session fade animation, then returns to the start screen.
+    /// </summary>
+    private async void CompleteBreathingSession()
+    {
+        if (_isShowingCompletion)
+        {
+            return;
+        }
+
+        _isShowingCompletion = true;
+        _isRunning = false;
+        _pauseTouchArea.Visible = false;
+        _pauseTouchArea.MouseFilter = MouseFilterEnum.Ignore;
+
+        _completionOverlay.Visible = true;
+        _completionOverlay.MouseFilter = MouseFilterEnum.Stop;
+        _completionFade.Modulate = new Color(1.0f, 1.0f, 1.0f, 0.0f);
+        _completionLabel.Modulate = new Color(1.0f, 1.0f, 1.0f, 0.0f);
+
+        Tween fadeOut = CreateTween();
+        fadeOut.TweenProperty(_completionFade, "modulate:a", 1.0f, 0.45f);
+        await ToSignal(fadeOut, Tween.SignalName.Finished);
+
+        // Reset the app while the screen is black, so the user does not see a
+        // sudden jump from the final breathing frame back to the start state.
+        _hasSessionStarted = false;
+        ResetSessionProgress();
+        UpdateMainScreenVisibility();
+        UpdateTexts();
+
+        Tween textFadeIn = CreateTween();
+        textFadeIn.TweenProperty(_completionLabel, "modulate:a", 1.0f, 0.35f);
+        await ToSignal(textFadeIn, Tween.SignalName.Finished);
+
+        await ToSignal(GetTree().CreateTimer(2.0), SceneTreeTimer.SignalName.Timeout);
+
+        Tween fadeIn = CreateTween();
+        fadeIn.SetParallel(true);
+        fadeIn.TweenProperty(_completionLabel, "modulate:a", 0.0f, 0.35f);
+        fadeIn.TweenProperty(_completionFade, "modulate:a", 0.0f, 0.45f);
+        await ToSignal(fadeIn, Tween.SignalName.Finished);
+
+        _completionOverlay.Visible = false;
+        _completionOverlay.MouseFilter = MouseFilterEnum.Ignore;
+        _isShowingCompletion = false;
     }
 
     /// <summary>
