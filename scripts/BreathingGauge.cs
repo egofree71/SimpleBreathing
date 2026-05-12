@@ -35,12 +35,13 @@ public partial class BreathingGauge : Control
 
         var gaugeRect = new Rect2(left, top, gaugeWidth, gaugeHeight);
 
-        DrawRect(gaugeRect, GaugeColor, filled: true);
-        DrawRect(gaugeRect, GaugeBorderColor, filled: false, width: 3.0f);
+        DrawCapsuleGauge(gaugeRect);
 
-        float ballRadius = Mathf.Clamp(gaugeWidth * 0.36f, 18.0f, 34.0f);
-        float usableTop = gaugeRect.Position.Y + ballRadius + 8.0f;
-        float usableBottom = gaugeRect.Position.Y + gaugeRect.Size.Y - ballRadius - 8.0f;
+        // La boule prend davantage de place dans la jauge, avec des marges latérales plus petites.
+        float ballRadius = Mathf.Clamp(gaugeWidth * 0.42f, 22.0f, 40.0f);
+        float verticalPadding = 4.0f;
+        float usableTop = gaugeRect.Position.Y + ballRadius + verticalPadding;
+        float usableBottom = gaugeRect.Position.Y + gaugeRect.Size.Y - ballRadius - verticalPadding;
         float ballY = Mathf.Lerp(usableBottom, usableTop, _progress);
         var ballCenter = new Vector2(width * 0.5f, ballY);
 
@@ -49,7 +50,66 @@ public partial class BreathingGauge : Control
         // Petits repères visuels haut/bas pour rendre la jauge plus lisible.
         float markerLeft = gaugeRect.Position.X - 14.0f;
         float markerRight = gaugeRect.Position.X - 4.0f;
-        DrawLine(new Vector2(markerLeft, usableTop), new Vector2(markerRight, usableTop), GaugeBorderColor, 2.0f);
-        DrawLine(new Vector2(markerLeft, usableBottom), new Vector2(markerRight, usableBottom), GaugeBorderColor, 2.0f);
+        DrawLine(new Vector2(markerLeft, usableTop), new Vector2(markerRight, usableTop), GaugeBorderColor, 2.0f, true);
+        DrawLine(new Vector2(markerLeft, usableBottom), new Vector2(markerRight, usableBottom), GaugeBorderColor, 2.0f, true);
+    }
+
+    private void DrawCapsuleGauge(Rect2 rect)
+    {
+        float radius = rect.Size.X * 0.5f;
+        float centerX = rect.Position.X + radius;
+        float topCenterY = rect.Position.Y + radius;
+        float bottomCenterY = rect.Position.Y + rect.Size.Y - radius;
+
+        // Remplissage : un rectangle central + deux cercles donnent une jauge en forme de capsule.
+        var bodyRect = new Rect2(
+            rect.Position.X,
+            topCenterY,
+            rect.Size.X,
+            Math.Max(0.0f, bottomCenterY - topCenterY));
+
+        DrawRect(bodyRect, GaugeColor, filled: true);
+        DrawCircle(new Vector2(centerX, topCenterY), radius, GaugeColor);
+        DrawCircle(new Vector2(centerX, bottomCenterY), radius, GaugeColor);
+
+        // Bordure de la capsule.
+        float borderWidth = 3.0f;
+        float borderRadius = radius - borderWidth * 0.5f;
+        float leftX = rect.Position.X + borderWidth * 0.5f;
+        float rightX = rect.Position.X + rect.Size.X - borderWidth * 0.5f;
+
+        DrawLine(
+            new Vector2(leftX, topCenterY),
+            new Vector2(leftX, bottomCenterY),
+            GaugeBorderColor,
+            borderWidth,
+            true);
+
+        DrawLine(
+            new Vector2(rightX, topCenterY),
+            new Vector2(rightX, bottomCenterY),
+            GaugeBorderColor,
+            borderWidth,
+            true);
+
+        DrawArc(
+            new Vector2(centerX, topCenterY),
+            borderRadius,
+            Mathf.Pi,
+            Mathf.Tau,
+            48,
+            GaugeBorderColor,
+            borderWidth,
+            true);
+
+        DrawArc(
+            new Vector2(centerX, bottomCenterY),
+            borderRadius,
+            0.0f,
+            Mathf.Pi,
+            48,
+            GaugeBorderColor,
+            borderWidth,
+            true);
     }
 }
