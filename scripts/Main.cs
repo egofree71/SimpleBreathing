@@ -82,6 +82,13 @@ public partial class Main : Control
     // False on startup: the ball is visible at the bottom, but the cycle is not moving yet.
     private bool _isRunning;
 
+    // Remembers whether the device was already configured to keep the screen on
+    // before the breathing session started, so the app can restore that state later.
+    private bool _wasScreenKeptOnBeforeSession;
+
+    // True only while this controller has explicitly enabled the keep-screen-on flag.
+    private bool _isKeepingScreenOnForSession;
+
     /// <summary>
     /// Builds the runtime UI and initializes visuals once the scene enters the tree.
     /// </summary>
@@ -132,6 +139,14 @@ public partial class Main : Control
 
         UpdateGauge();
         UpdatePauseProgressDisplay();
+    }
+
+    /// <summary>
+    /// Restores the previous screen sleep behavior if the scene is removed during a session.
+    /// </summary>
+    public override void _ExitTree()
+    {
+        RestoreScreenKeepOnState();
     }
 
     /// <summary>
@@ -955,6 +970,8 @@ public partial class Main : Control
             ResetSessionProgress();
         }
 
+        EnableScreenKeepOnForSession();
+
         _hasSessionStarted = true;
         _isRunning = true;
         UpdateMainScreenVisibility();
@@ -988,6 +1005,7 @@ public partial class Main : Control
 
         _isShowingCompletion = true;
         _isRunning = false;
+        RestoreScreenKeepOnState();
         _pauseTouchArea.Visible = false;
         _pauseTouchArea.MouseFilter = MouseFilterEnum.Ignore;
 
@@ -1031,6 +1049,7 @@ public partial class Main : Control
     {
         _hasSessionStarted = false;
         _isRunning = false;
+        RestoreScreenKeepOnState();
         ResetSessionProgress();
         UpdateMainScreenVisibility();
         UpdateTexts();
@@ -1045,6 +1064,7 @@ public partial class Main : Control
         // If this is called from a future UI path, stop the session explicitly.
         _hasSessionStarted = false;
         _isRunning = false;
+        RestoreScreenKeepOnState();
         ResetSessionProgress();
         ResetDraftSettingsFromCurrent();
         UpdateMainScreenVisibility();
@@ -1063,6 +1083,35 @@ public partial class Main : Control
         _mainScreen.Visible = true;
         UpdateMainScreenVisibility();
         UpdateTexts();
+    }
+
+    /// <summary>
+    /// Prevents the phone screen from sleeping while a breathing session is active.
+    /// </summary>
+    private void EnableScreenKeepOnForSession()
+    {
+        if (_isKeepingScreenOnForSession)
+        {
+            return;
+        }
+
+        _wasScreenKeptOnBeforeSession = DisplayServer.ScreenIsKeptOn();
+        DisplayServer.ScreenSetKeepOn(true);
+        _isKeepingScreenOnForSession = true;
+    }
+
+    /// <summary>
+    /// Restores the screen sleep behavior that was active before the session started.
+    /// </summary>
+    private void RestoreScreenKeepOnState()
+    {
+        if (!_isKeepingScreenOnForSession)
+        {
+            return;
+        }
+
+        DisplayServer.ScreenSetKeepOn(_wasScreenKeptOnBeforeSession);
+        _isKeepingScreenOnForSession = false;
     }
 
     /// <summary>
