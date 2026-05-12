@@ -152,8 +152,14 @@ public partial class Main : Control
         mainColumn.AddThemeConstantOverride("separation", 8);
         margin.AddChild(mainColumn);
 
+        // Keep the settings button as an overlay instead of placing it in the
+        // vertical layout. This lets the gauge sit slightly higher on the screen.
         _topActionRow = BuildTopActionRow();
-        mainColumn.AddChild(_topActionRow);
+        root.AddChild(_topActionRow);
+
+        // Small top spacer: enough breathing room from the top edge, but less than
+        // the full settings-button row used previously.
+        mainColumn.AddChild(CreateVerticalSpacer(24));
 
         _gauge = new BreathingGauge
         {
@@ -185,8 +191,9 @@ public partial class Main : Control
         var row = new HBoxContainer
         {
             Name = "TopActionRow",
-            CustomMinimumSize = new Vector2(0, 52),
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
+            Position = new Vector2(20, 16),
+            Size = new Vector2(64, 56),
+            CustomMinimumSize = new Vector2(64, 56)
         };
         row.AddThemeConstantOverride("separation", 12);
 
@@ -204,22 +211,26 @@ public partial class Main : Control
 
     private Control BuildBottomControls()
     {
-        var row = new HBoxContainer
+        var controls = new Control
         {
             Name = "BottomControls",
-            Alignment = BoxContainer.AlignmentMode.Center,
             CustomMinimumSize = new Vector2(0, 64),
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
-        row.AddThemeConstantOverride("separation", 16);
 
         _stopButton = CreateSessionIconButton("■", StopBreathingSession, 34);
-        row.AddChild(_stopButton);
+        controls.AddChild(_stopButton);
 
         _startResumeButton = CreateSessionIconButton("▶", StartOrResumeBreathingSession, 38);
-        row.AddChild(_startResumeButton);
+        controls.AddChild(_startResumeButton);
 
-        return row;
+        // The resume button is anchored to the exact horizontal center. When the
+        // stop button appears on the left during pause, the resume button does not
+        // shift: it stays directly below the gauge.
+        PositionControl(_startResumeButton, left: -38, top: 2, right: 38, bottom: 62);
+        PositionControl(_stopButton, left: -130, top: 2, right: -54, bottom: 62);
+
+        return controls;
     }
 
     /// <summary>
@@ -418,6 +429,18 @@ public partial class Main : Control
         button.AddThemeFontSizeOverride("font_size", fontSize);
         button.Pressed += onPressed;
         return button;
+    }
+
+    private static void PositionControl(Control control, float left, float top, float right, float bottom)
+    {
+        control.AnchorLeft = 0.5f;
+        control.AnchorTop = 0.0f;
+        control.AnchorRight = 0.5f;
+        control.AnchorBottom = 0.0f;
+        control.OffsetLeft = left;
+        control.OffsetTop = top;
+        control.OffsetRight = right;
+        control.OffsetBottom = bottom;
     }
 
     private Control CreateVerticalSpacer(float height)

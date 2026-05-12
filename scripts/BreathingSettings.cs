@@ -49,11 +49,13 @@ public sealed class BreathingSettings
 
         new(
             "Volcanique",
-            new Color(0.16f, 0.04f, 0.02f),
-            new Color(1.00f, 0.90f, 0.70f),
-            new Color(0.42f, 0.05f, 0.02f),
-            new Color(0.85f, 0.20f, 0.04f),
-            new Color(1.00f, 0.42f, 0.02f)),
+            // Inspired by the lava palette:
+            // #370617, #6A040F, #9D0208, #D00000, #DC2F02, #E85D04, #F48C06, #FAA307, #FFBA08.
+            new Color(0.22f, 0.02f, 0.09f),
+            new Color(1.00f, 0.73f, 0.03f),
+            new Color(0.62f, 0.01f, 0.03f),
+            new Color(0.96f, 0.55f, 0.02f),
+            new Color(1.00f, 0.73f, 0.03f)),
 
         new(
             "Ciel",
