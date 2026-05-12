@@ -604,7 +604,7 @@ public partial class Main : Control
         headerRow.AddThemeConstantOverride("separation", 12);
         column.AddChild(headerRow);
 
-        headerRow.AddChild(CreateSettingsIconButton("←", ShowMainScreen, 28));
+        headerRow.AddChild(CreateSettingsIconButton("←", ShowMainScreen, 32));
 
         var title = new Label
         {
@@ -849,7 +849,7 @@ public partial class Main : Control
             Text = text,
             CustomMinimumSize = new Vector2(112, 48)
         };
-        button.AddThemeFontSizeOverride("font_size", 24);
+        button.AddThemeFontSizeOverride("font_size", 30);
         ApplySettingsButtonStyle(button);
         button.Pressed += onPressed;
         return button;
@@ -930,6 +930,8 @@ public partial class Main : Control
         button.AddThemeColorOverride("font_hover_color", Colors.White);
         button.AddThemeColorOverride("font_pressed_color", Colors.White);
         button.AddThemeColorOverride("font_focus_color", Colors.White);
+        button.AddThemeColorOverride("font_outline_color", Colors.White);
+        button.AddThemeConstantOverride("outline_size", 1);
 
         button.AddThemeStyleboxOverride("normal", CreateSettingsButtonStyleBox(new Color(0.04f, 0.04f, 0.04f)));
         button.AddThemeStyleboxOverride("hover", CreateSettingsButtonStyleBox(new Color(0.10f, 0.10f, 0.10f)));

@@ -380,6 +380,8 @@ It uses a fixed neutral style:
 
 The settings screen does not preview the selected theme colors directly. This is intentional: some themes made buttons hard to read when the settings screen used theme colors.
 
+The settings button symbols are intentionally heavier than before: the `+`, `−`, `‹`, `›`, and back arrow use a larger font size and a thin same-color outline so they remain readable on real phone screens.
+
 Current French layout example:
 
 ```text
@@ -424,6 +426,8 @@ The duration buttons use:
 +
 ```
 
+They use a larger button-symbol font and a thin white outline to look less fragile on mobile.
+
 The values are edited in steps of:
 
 ```text
@@ -463,6 +467,8 @@ The theme selection buttons use:
 ‹
 ›
 ```
+
+They use the same heavier settings-button style as the duration buttons.
 
 The selected theme name is displayed between the buttons.
 
@@ -850,7 +856,7 @@ Implemented and validated:
 - basic localization in English, French, and Spanish;
 - themes renamed and recolored;
 - neutral black-and-white settings screen;
-- larger settings text and button symbols;
+- larger and heavier settings button symbols;
 - XML comments added to `Main.cs` methods;
 - implementation documentation.
 
