@@ -36,6 +36,11 @@ public partial class Main : Control
     private Control _topActionRow = null!;
     private Control _bottomControls = null!;
 
+    // Pause-only information shown above the gauge.
+    private Label _pauseElapsedLabel = null!;
+    private Control _pauseProgressBar = null!;
+    private ColorRect _pauseProgressFill = null!;
+
     // Transparent full-screen touch area used only while the breathing session is running.
     private Control _pauseTouchArea = null!;
 
@@ -65,6 +70,7 @@ public partial class Main : Control
         ApplyColors();
         UpdateTexts();
         UpdateGauge();
+        UpdatePauseProgressDisplay();
         UpdateMainScreenVisibility();
     }
 
@@ -91,6 +97,7 @@ public partial class Main : Control
         }
 
         UpdateGauge();
+        UpdatePauseProgressDisplay();
     }
 
     /// <summary>
@@ -161,6 +168,10 @@ public partial class Main : Control
         // the full settings-button row used previously.
         mainColumn.AddChild(CreateVerticalSpacer(24));
 
+        // This fixed-height area stays in the layout all the time so the gauge does
+        // not jump when the pause information appears.
+        mainColumn.AddChild(BuildPauseProgressArea());
+
         _gauge = new BreathingGauge
         {
             Name = "BreathingGauge",
@@ -207,6 +218,83 @@ public partial class Main : Control
         });
 
         return row;
+    }
+
+    private Control BuildPauseProgressArea()
+    {
+        var area = new Control
+        {
+            Name = "PauseProgressArea",
+            CustomMinimumSize = new Vector2(0, 64),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+
+        var column = new VBoxContainer
+        {
+            Name = "PauseProgressColumn",
+            Alignment = BoxContainer.AlignmentMode.Center,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill
+        };
+        column.AddThemeConstantOverride("separation", 8);
+        area.AddChild(column);
+        FillParent(column);
+        // Move the pause progress display slightly closer to the gauge.
+        column.OffsetTop = 14.0f;
+
+        _pauseElapsedLabel = new Label
+        {
+            Name = "PauseElapsedLabel",
+            HorizontalAlignment = Godot.HorizontalAlignment.Center,
+            Visible = false
+        };
+        _pauseElapsedLabel.AddThemeFontSizeOverride("font_size", 18);
+        column.AddChild(_pauseElapsedLabel);
+
+        var barCenter = new CenterContainer
+        {
+            Name = "PauseProgressBarCenter",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            Visible = false
+        };
+        column.AddChild(barCenter);
+
+        _pauseProgressBar = new Control
+        {
+            Name = "PauseProgressBar",
+            // 360px is roughly three quarters of the current 480px base viewport width.
+            CustomMinimumSize = new Vector2(360, 16),
+            ClipContents = true
+        };
+        _pauseProgressBar.Resized += UpdatePauseProgressDisplay;
+        barCenter.AddChild(_pauseProgressBar);
+
+        var background = new ColorRect
+        {
+            Name = "PauseProgressBarBackground",
+            Color = new Color(1.0f, 1.0f, 1.0f, 0.25f),
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        _pauseProgressBar.AddChild(background);
+        FillParent(background);
+
+        _pauseProgressFill = new ColorRect
+        {
+            Name = "PauseProgressBarFill",
+            Color = new Color(1.0f, 1.0f, 1.0f, 0.95f),
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        _pauseProgressBar.AddChild(_pauseProgressFill);
+        _pauseProgressFill.AnchorLeft = 0.0f;
+        _pauseProgressFill.AnchorTop = 0.0f;
+        _pauseProgressFill.AnchorRight = 0.0f;
+        _pauseProgressFill.AnchorBottom = 1.0f;
+        _pauseProgressFill.OffsetLeft = 0.0f;
+        _pauseProgressFill.OffsetTop = 0.0f;
+        _pauseProgressFill.OffsetRight = 0.0f;
+        _pauseProgressFill.OffsetBottom = 0.0f;
+
+        return area;
     }
 
     private Control BuildBottomControls()
@@ -660,6 +748,7 @@ public partial class Main : Control
         _currentPhase = BreathingPhase.Inhale;
         _phaseElapsed = 0.0;
         UpdateGauge();
+        UpdatePauseProgressDisplay();
         UpdateTexts();
     }
 
@@ -701,6 +790,18 @@ public partial class Main : Control
         return Math.Clamp(_phaseElapsed / GetCurrentPhaseDuration(), 0.0, 1.0);
     }
 
+    private double GetCycleDuration()
+    {
+        return _settings.InhaleDuration + _settings.ExhaleDuration;
+    }
+
+    private double GetCycleElapsed()
+    {
+        return _currentPhase == BreathingPhase.Inhale
+            ? _phaseElapsed
+            : _settings.InhaleDuration + _phaseElapsed;
+    }
+
     private static double EaseInOut(double value)
     {
         double t = Math.Clamp(value, 0.0, 1.0);
@@ -726,6 +827,8 @@ public partial class Main : Control
         {
             _themeLabel.Text = _settings.CurrentThemeName;
         }
+
+        UpdatePauseProgressDisplay();
     }
 
     private void UpdateMainScreenVisibility()
@@ -743,12 +846,20 @@ public partial class Main : Control
         _stopButton.Visible = isPausedSession;
         _startResumeButton.Visible = isStartScreen || isPausedSession;
 
+        _pauseElapsedLabel.Visible = isPausedSession;
+        if (_pauseProgressBar.GetParent() is CanvasItem parentItem)
+        {
+            parentItem.Visible = isPausedSession;
+        }
+
         // While running, this invisible Control catches any screen tap so the
         // user can pause without aiming for a tiny button.
         _pauseTouchArea.Visible = isRunningSession;
         _pauseTouchArea.MouseFilter = isRunningSession
             ? MouseFilterEnum.Stop
             : MouseFilterEnum.Ignore;
+
+        UpdatePauseProgressDisplay();
     }
 
     private void UpdateGauge()
@@ -764,6 +875,32 @@ public partial class Main : Control
             : 1.0f - (float)easedProgress;
 
         _gauge.SetProgress(visualProgress);
+    }
+
+    private void UpdatePauseProgressDisplay()
+    {
+        if (_pauseElapsedLabel == null || _pauseProgressBar == null || _pauseProgressFill == null)
+        {
+            return;
+        }
+
+        if (!_hasSessionStarted)
+        {
+            _pauseElapsedLabel.Text = string.Empty;
+            _pauseProgressFill.OffsetRight = 0.0f;
+            return;
+        }
+
+        double cycleDuration = GetCycleDuration();
+        double cycleElapsed = GetCycleElapsed();
+        double progress = cycleDuration > 0.0
+            ? Math.Clamp(cycleElapsed / cycleDuration, 0.0, 1.0)
+            : 0.0;
+
+        _pauseElapsedLabel.Text = $"{cycleElapsed:0.0}s / {cycleDuration:0.0}s";
+
+        float fillWidth = _pauseProgressBar.Size.X * (float)progress;
+        _pauseProgressFill.OffsetRight = fillWidth;
     }
 
     private void ApplyColors()
