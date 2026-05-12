@@ -227,8 +227,11 @@ public partial class Main : Control
         // The resume button is anchored to the exact horizontal center. When the
         // stop button appears on the left during pause, the resume button does not
         // shift: it stays directly below the gauge.
-        PositionControl(_startResumeButton, left: -38, top: 2, right: 38, bottom: 62);
-        PositionControl(_stopButton, left: -130, top: 2, right: -54, bottom: 62);
+        //
+        // The buttons are moved slightly upward inside this reserved bottom area so
+        // their visual center sits between the gauge and the bottom of the screen.
+        PositionControl(_startResumeButton, left: -38, top: -14, right: 38, bottom: 46);
+        PositionControl(_stopButton, left: -130, top: -14, right: -54, bottom: 46);
 
         return controls;
     }
@@ -298,7 +301,7 @@ public partial class Main : Control
         column.AddChild(colorsTitle);
         column.AddChild(CreateThemeRow());
 
-        // Pushes the reset button toward the bottom without hard-coding a phone height.
+        // Pushes the save button toward the bottom without hard-coding a phone height.
         var flexibleSpacer = new Control
         {
             Name = "SettingsFlexibleSpacer",
@@ -306,14 +309,14 @@ public partial class Main : Control
         };
         column.AddChild(flexibleSpacer);
 
-        var resetRow = new HBoxContainer
+        var saveRow = new HBoxContainer
         {
-            Name = "SettingsResetRow",
+            Name = "SettingsSaveRow",
             Alignment = BoxContainer.AlignmentMode.Center,
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
-        resetRow.AddChild(CreateButton("Réinitialiser le cycle", ResetCycle));
-        column.AddChild(resetRow);
+        saveRow.AddChild(CreateSaveButton(SaveSettings));
+        column.AddChild(saveRow);
 
         return margin;
     }
@@ -431,6 +434,27 @@ public partial class Main : Control
         return button;
     }
 
+    private Button CreateSaveButton(Action onPressed)
+    {
+        var button = new Button
+        {
+            Text = string.Empty,
+            CustomMinimumSize = new Vector2(64, 56)
+        };
+
+        var icon = new FloppyIcon
+        {
+            Name = "SaveIcon",
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        button.AddChild(icon);
+        // Smaller insets so the floppy icon appears larger inside the same button.
+        InsetControl(icon, 7, 5, 7, 5);
+
+        button.Pressed += onPressed;
+        return button;
+    }
+
     private static void PositionControl(Control control, float left, float top, float right, float bottom)
     {
         control.AnchorLeft = 0.5f;
@@ -441,6 +465,18 @@ public partial class Main : Control
         control.OffsetTop = top;
         control.OffsetRight = right;
         control.OffsetBottom = bottom;
+    }
+
+    private static void InsetControl(Control control, float left, float top, float right, float bottom)
+    {
+        control.AnchorLeft = 0.0f;
+        control.AnchorTop = 0.0f;
+        control.AnchorRight = 1.0f;
+        control.AnchorBottom = 1.0f;
+        control.OffsetLeft = left;
+        control.OffsetTop = top;
+        control.OffsetRight = -right;
+        control.OffsetBottom = -bottom;
     }
 
     private Control CreateVerticalSpacer(float height)
@@ -477,6 +513,13 @@ public partial class Main : Control
         _settings.MoveToNextTheme();
         ApplyColors();
         UpdateTexts();
+    }
+
+    private void SaveSettings()
+    {
+        // Settings are applied immediately in memory for now. The save button is
+        // the explicit validation step that returns the user to the main screen.
+        ShowMainScreen();
     }
 
     private void StartOrResumeBreathingSession()
@@ -570,6 +613,20 @@ public partial class Main : Control
             : _settings.ExhaleDuration;
     }
 
+    private double GetCurrentPhaseProgress()
+    {
+        return Math.Clamp(_phaseElapsed / GetCurrentPhaseDuration(), 0.0, 1.0);
+    }
+
+    private static double EaseInOut(double value)
+    {
+        double t = Math.Clamp(value, 0.0, 1.0);
+
+        // Smootherstep: starts and ends with a very low speed, while keeping the
+        // middle of the movement fluid. This feels more organic than a hard pause.
+        return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+    }
+
     private void UpdateTexts()
     {
         if (_inhaleValueLabel != null)
@@ -613,14 +670,15 @@ public partial class Main : Control
 
     private void UpdateGauge()
     {
-        double phaseProgress = _phaseElapsed / GetCurrentPhaseDuration();
-        phaseProgress = Math.Clamp(phaseProgress, 0.0, 1.0);
+        double phaseProgress = GetCurrentPhaseProgress();
+        double easedProgress = EaseInOut(phaseProgress);
 
         // The drawing code expects 0 at the bottom and 1 at the top.
         // Inhale climbs from 0 to 1; exhale descends from 1 to 0.
+        // Easing makes the ball slow down naturally near both ends.
         float visualProgress = _currentPhase == BreathingPhase.Inhale
-            ? (float)phaseProgress
-            : 1.0f - (float)phaseProgress;
+            ? (float)easedProgress
+            : 1.0f - (float)easedProgress;
 
         _gauge.SetProgress(visualProgress);
     }
@@ -650,6 +708,11 @@ public partial class Main : Control
             button.AddThemeColorOverride("font_color", color);
             button.AddThemeColorOverride("font_hover_color", color);
             button.AddThemeColorOverride("font_pressed_color", color);
+        }
+        else if (node is FloppyIcon floppyIcon)
+        {
+            floppyIcon.IconColor = color;
+            floppyIcon.QueueRedraw();
         }
 
         foreach (Node child in node.GetChildren())

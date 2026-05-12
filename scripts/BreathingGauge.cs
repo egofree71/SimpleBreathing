@@ -43,9 +43,10 @@ public partial class BreathingGauge : Control
         }
 
         // The control can stretch to fill the screen. These values define the
-        // actual capsule inside the available drawing area.
-        float gaugeHeight = Math.Max(120.0f, height - 30.0f);
-        float gaugeWidth = Mathf.Clamp(width * 0.22f, 54.0f, 96.0f);
+        // actual capsule inside the available drawing area. The capsule is kept
+        // slightly smaller than before to feel lighter on a phone screen.
+        float gaugeHeight = Math.Max(108.0f, (height - 30.0f) * 0.90f);
+        float gaugeWidth = Mathf.Clamp(width * 0.198f, 49.0f, 86.0f);
         float left = (width - gaugeWidth) * 0.5f;
         float top = (height - gaugeHeight) * 0.5f;
 

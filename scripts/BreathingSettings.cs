@@ -13,7 +13,6 @@ public sealed class BreathingSettings
     public const double DurationStep = 0.5;
     public const double MinimumDuration = 1.0;
     public const double MaximumDuration = 20.0;
-
     public double InhaleDuration { get; set; } = 4.0;
     public double ExhaleDuration { get; set; } = 4.0;
 
