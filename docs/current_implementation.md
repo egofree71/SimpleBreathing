@@ -297,18 +297,18 @@ When the configured session duration is reached:
 - the ball returns naturally to the bottom of the gauge;
 - then the session stops automatically;
 - the previous screen sleep behavior is restored;
-- a full-screen overlay fades the current view to black;
-- the app resets the session while the screen is black;
-- a localized completion message fades in;
+- a full-screen overlay fades the current view into the current theme background color;
+- the app resets the session while the gauge is hidden by the themed overlay;
+- a localized completion message fades in using the current theme text color;
 - the message stays visible for about 2 seconds;
 - the overlay fades out;
 - the app returns to the initial main screen.
 
-This avoids stopping the session in the middle of an inhalation or exhalation. The fade transition still avoids a sudden visual jump from the final breathing frame back to the start state.
+This avoids stopping the session in the middle of an inhalation or exhalation. The themed fade transition still avoids a sudden visual jump from the final breathing frame back to the start state.
 
 ### Completion overlay
 
-The completion message is handled by a full-screen overlay created in `main.gd`.
+The completion message is handled by a full-screen overlay created in `main.gd`. The overlay uses the active breathing theme instead of the neutral black-and-white settings style.
 
 Overlay elements:
 
@@ -335,13 +335,13 @@ Spanish : Sesión terminada
 Animation sequence:
 
 ```text
-fade to black        : about 0.45 s
-text fade in         : about 0.35 s
-message hold         : 2.0 s
-text + black fade out: about 0.45 s
+fade to themed background : about 0.45 s
+text fade in              : about 0.35 s
+message hold              : 2.0 s
+text + background fade out: about 0.45 s
 ```
 
-The app resets the session while the screen is black, so the user does not see an abrupt jump.
+The app resets the session while the themed overlay hides the gauge, so the user does not see an abrupt jump.
 
 ### Screen wake behavior
 
@@ -506,7 +506,7 @@ The app sets:
 _is_finishing_session = true
 ```
 
-The breathing cycle then continues until an exhalation finishes and the ball is back at the bottom of the gauge. At that point the app calls the completion flow, which fades to black, shows the completion message, resets the session, and returns to the start screen.
+The breathing cycle then continues until an exhalation finishes and the ball is back at the bottom of the gauge. At that point the app calls the completion flow, which fades to the active theme background color, shows the completion message using the active theme text color, resets the session, and returns to the start screen.
 
 During this final extension, `_session_elapsed` may internally exceed the configured duration. Pause-screen UI uses a display elapsed time capped to the configured duration, so the label and progress bar never go above 100%.
 
@@ -843,7 +843,7 @@ Implemented and validated:
 - progress bar based on total session duration;
 - pause elapsed-time and progress bar capped at the configured duration;
 - natural session ending at the bottom of the gauge after the final exhalation;
-- soft completion fade after the final exhalation has finished;
+- soft theme-colored completion fade after the final exhalation has finished;
 - vertical rounded capsule-shaped gauge;
 - gauge vertically centered on the main screen;
 - gauge without visible border;

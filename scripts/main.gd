@@ -323,7 +323,7 @@ static func _to_margin_constant(value: float) -> int:
 	return maxi(0, int(roundf(value)))
 
 
-## Creates the black fade overlay shown when a breathing session finishes
+## Creates the theme-colored fade overlay shown when a breathing session finishes
 ## naturally. The overlay blocks input during the short end animation.
 func _build_completion_overlay() -> Control:
 	var overlay := Control.new()
@@ -333,7 +333,7 @@ func _build_completion_overlay() -> Control:
 
 	_completion_fade = ColorRect.new()
 	_completion_fade.name = "CompletionFade"
-	_completion_fade.color = Color.BLACK
+	_completion_fade.color = _settings.background_color
 	_completion_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay.add_child(_completion_fade)
 	_fill_parent(_completion_fade)
@@ -351,7 +351,7 @@ func _build_completion_overlay() -> Control:
 	_completion_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_completion_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_completion_label.add_theme_font_size_override("font_size", 34)
-	_completion_label.add_theme_color_override("font_color", Color.WHITE)
+	_completion_label.add_theme_color_override("font_color", _settings.text_color)
 	center.add_child(_completion_label)
 
 	_completion_fade.modulate = Color(1.0, 1.0, 1.0, 0.0)
@@ -1274,9 +1274,13 @@ func _apply_colors() -> void:
 	_gauge.ball_color = _settings.ball_color
 	_gauge.queue_redraw()
 
-	# Keep the breathing screen theme-aware, but leave the settings screen in a
-	# neutral black-and-white style for consistent readability.
+	if _completion_fade != null:
+		_completion_fade.color = _settings.background_color
+
+	# Keep the breathing screen and completion overlay theme-aware, but leave the
+	# settings screen in a neutral black-and-white style for consistent readability.
 	_apply_text_color_recursive(_main_screen, _settings.text_color)
+	_apply_text_color_recursive(_completion_overlay, _settings.text_color)
 	_apply_text_color_recursive(_settings_screen, Color.WHITE)
 
 	_apply_main_button_style(_settings_button, _settings.text_color)
