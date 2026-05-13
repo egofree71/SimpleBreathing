@@ -1,4 +1,4 @@
-# SimpleBreathing
+# Essential Breathing
 
 A very simple Android breathing app built with **Godot 4.6.2** and **GDScript**.
 

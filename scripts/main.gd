@@ -119,7 +119,7 @@ var _is_keeping_screen_on_for_session := false
 ## and gauge position with the current state.
 func _ready() -> void:
 	# Android export presets can enable immersive fullscreen mode, which hides the
-	# system navigation bar. SimpleBreathing is closer to a small utility app than
+	# system navigation bar. Essential Breathing is closer to a small utility app than
 	# to a game, so keep Android system bars visible by default.
 	_ensure_android_system_bars_visible()
 

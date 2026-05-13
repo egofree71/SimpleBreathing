@@ -1,8 +1,8 @@
 # Android export notes
 
-This document summarizes the Android-specific setup used by SimpleBreathing.
+This document summarizes the Android-specific setup used by Essential Breathing.
 
-SimpleBreathing is built with **Godot 4.6.2** and **GDScript**. The active project is intended to export with the standard **non-.NET** Godot editor.
+Essential Breathing is built with **Godot 4.6.2** and **GDScript**. The active project is intended to export with the standard **non-.NET** Godot editor.
 
 ## Current Android status
 

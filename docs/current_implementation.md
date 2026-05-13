@@ -1,8 +1,8 @@
-# SimpleBreathing — Current Implementation
+# Essential Breathing — Current Implementation
 
 ## Goal
 
-SimpleBreathing is a very simple Android breathing app built with **Godot 4.6.2** and **GDScript**.
+Essential Breathing is a very simple Android breathing app built with **Godot 4.6.2** and **GDScript**.
 
 The app displays a vertical gauge with a ball that moves upward during inhalation and downward during exhalation.
 
@@ -19,7 +19,7 @@ The current design goal is to keep the mobile interface calm and minimal:
 ## Project structure
 
 ```text
-SimpleBreathing/
+EssentialBreathing/
 ├── project.godot
 ├── README.md
 ├── icon.svg
@@ -75,7 +75,7 @@ boot_splash/show_image=false
 
 ### Android system bars
 
-SimpleBreathing should behave more like a small utility app than a fullscreen game on Android. The Android status/navigation system bars should stay visible so the user can leave the app normally with the Home button or gesture area.
+Essential Breathing should behave more like a small utility app than a fullscreen game on Android. The Android status/navigation system bars should stay visible so the user can leave the app normally with the Home button or gesture area.
 
 For the preferred modern Android look, the navigation/status bars are visible but translucent, and the app background extends behind them. Interactive controls should not be placed under those bars.
 
@@ -188,7 +188,7 @@ Visible at startup:
 
 Details:
 
-- the `Simple Breathing` title is not displayed;
+- the `Essential Breathing` title is not displayed;
 - the settings button is in the top-left corner;
 - the start button is centered near the bottom;
 - main-screen buttons use a translucent theme-aware style instead of Godot's default dark grey button background;
