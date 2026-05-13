@@ -33,7 +33,7 @@ enum BreathingPhase { INHALE, EXHALE }
 # These buttons are positioned manually so the play/resume button stays centered
 # and the stop button appears to its left only while the session is paused.
 const SESSION_BUTTON_SIZE := Vector2(80, 68)
-const SESSION_BUTTON_CENTER_Y := 16.0
+const SESSION_BUTTON_CENTER_Y := 32.0
 const STOP_BUTTON_CENTER_X := -92.0
 const START_RESUME_BUTTON_CENTER_X := 0.0
 
@@ -334,8 +334,9 @@ func _build_main_screen() -> Control:
 	_top_action_row = _build_top_action_row()
 	root.add_child(_top_action_row)
 
-	# The pause progress area and the bottom controls have the same reserved height,
-	# so the gauge is vertically centered in the screen.
+	# The pause progress area and the bottom controls keep the same reserved height.
+	# This keeps the gauge visually balanced while giving the bottom buttons a bit
+	# more vertical breathing room and raises the session buttons slightly.
 	main_column.add_child(_build_pause_progress_area())
 
 	_gauge = BreathingGauge.new()
@@ -385,7 +386,7 @@ func _build_top_action_row() -> Control:
 func _build_pause_progress_area() -> Control:
 	var area := Control.new()
 	area.name = "PauseProgressArea"
-	area.custom_minimum_size = Vector2(0, 64)
+	area.custom_minimum_size = Vector2(0, 112)
 	area.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	var column := VBoxContainer.new()
@@ -449,7 +450,7 @@ func _build_pause_progress_area() -> Control:
 func _build_bottom_controls() -> Control:
 	var controls := Control.new()
 	controls.name = "BottomControls"
-	controls.custom_minimum_size = Vector2(0, 64)
+	controls.custom_minimum_size = Vector2(0, 112)
 	controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	_stop_button = _create_session_svg_icon_button(STOP_ICON, Callable(self, "_stop_breathing_session"))
