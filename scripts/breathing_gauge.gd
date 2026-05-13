@@ -9,6 +9,10 @@ extends Control
 # Normalized ball position: 0 = bottom, 1 = top.
 var _progress := 0.0
 
+# Small visual offset applied only to the drawn capsule. A negative value moves
+# the gauge upward inside its layout area without changing the surrounding UI.
+const GAUGE_VERTICAL_OFFSET_Y := -18.0
+
 var gauge_color := Color(0.15, 0.22, 0.30)
 
 # Kept for now because themes still define it. The clean gauge style no longer
@@ -35,11 +39,14 @@ func _draw() -> void:
 
 	# The control can stretch to fill the screen. These values define the actual
 	# capsule inside the available drawing area. The capsule is kept slightly
-	# smaller than before to feel lighter on a phone screen.
-	var gauge_height: float = maxf(108.0, (height - 30.0) * 0.90)
+	# slightly shorter than before so the gauge feels lighter and less tall on screen.
+	var gauge_height: float = maxf(96.0, (height - 30.0) * 0.82)
 	var gauge_width := clampf(width * 0.198, 49.0, 86.0)
 	var left := (width - gauge_width) * 0.5
-	var top := (height - gauge_height) * 0.5
+	# Keep the shorter gauge slightly above the exact vertical center. This gives the
+	# main screen a better balance on Android, where the bottom controls and system
+	# navigation area can make the gauge feel a little too low.
+	var top := maxf(0.0, (height - gauge_height) * 0.5 + GAUGE_VERTICAL_OFFSET_Y)
 
 	var gauge_rect := Rect2(left, top, gauge_width, gauge_height)
 
